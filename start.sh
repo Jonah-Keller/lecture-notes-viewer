@@ -33,10 +33,15 @@ fi
 
 PY_MAJOR=$(python3 -c 'import sys; print(sys.version_info[0])')
 PY_MINOR=$(python3 -c 'import sys; print(sys.version_info[1])')
-if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 11 ]; }; then
-    echo "Python 3.11+ is required (found $PY_MAJOR.$PY_MINOR)."
+if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 9 ]; }; then
+    echo "Python 3.9+ is required (found $PY_MAJOR.$PY_MINOR)."
     echo "Install a newer Python from https://www.python.org/downloads/ and re-run."
     exit 1
+fi
+
+# --- Pull latest from GitHub (if this is a clone with a remote) ---------------
+if [ -d .git ] && git remote get-url origin >/dev/null 2>&1; then
+    git pull --ff-only --quiet 2>/dev/null || true
 fi
 
 # --- Virtualenv ---------------------------------------------------------------

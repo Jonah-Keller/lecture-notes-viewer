@@ -3,6 +3,9 @@
 # It runs setup the first time, launches the server, and opens your browser.
 # Press Ctrl-C in the Terminal window to stop the server.
 
+# Keep the Terminal window open after the script exits (so errors stay visible).
+trap 'echo; echo "──────────────────────────────────────────"; echo "Server stopped. Press Enter to close this window."; read -r _' EXIT
+
 set -e
 
 # Resolve the real directory of this script even if it's a symlink (e.g. on Desktop).
