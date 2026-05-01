@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.lecnotes.log
+.lecnotes.pid
+.DS_Store
+
+# All per-course content is local-only. Each user creates their own
+# courses via the "New Course" button in the UI, then uploads lectures.
+content/*
+!content/.gitkeep

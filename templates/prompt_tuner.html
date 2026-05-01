@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Tune prompt — {{ current_name }}{% endblock %}
+
+{% block body %}
+<div class="container tuner-container">
+    <aside class="sidebar">
+        <h1 class="site-title">Prompt tuner</h1>
+        <p class="hint">Course: <strong>{{ current_name }}</strong></p>
+        <p><a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to {{ current_name }}</a></p>
+        {% if not api_key_set %}
+        <p class="warn">Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to chat with Claude.</p>
+        {% endif %}
+        <p class="hint">
+            The base prompt at <code>prompt.txt</code> runs for every lecture in every course.
+            Anything you save here becomes a course-only addendum at
+            <code>content/{{ current_slug }}/prompt.md</code>.
+            It's appended after the base prompt — refines, doesn't replace.
+        </p>
+        <details class="base-prompt-details">
+            <summary>Show base prompt</summary>
+            <pre class="base-prompt">{{ base_prompt }}</pre>
+        </details>
+    </aside>
+    <main class="main-content tuner-main">
+        <div class="tuner-grid">
+            <section class="tuner-pane addendum-pane">
+                <h2>Course addendum</h2>
+                <p class="hint">Source of truth — what gets saved and appended at generation time.</p>
+                <textarea id="addendum" rows="22"
+                          placeholder="Course-specific rules go here. Click 'Use Claude's last proposal' to pull in the most recent ```markdown block from the chat.">{{ addendum }}</textarea>
+                <div class="row">
+                    <button id="use-proposal" type="button">Use Claude's last proposal</button>
+                    <button id="save-addendum" type="button" class="primary">Save addendum</button>
+                </div>
+                <div id="save-status" class="hint"></div>
+            </section>
+            <section class="tuner-pane chat-pane">
+                <h2>Chat with Claude</h2>
+                <p class="hint">Sonnet 4.6. Tell it what you want notes to do for this course.</p>
+                <div id="chat-log"></div>
+                <form id="chat-form">
+                    <textarea name="message" rows="3" required
+                              placeholder="e.g. 'For each disease, I want a short clinical-differentials list with the 2–3 things it gets confused with and one line each on the distinguishing feature, even if the lecture doesn't mention them.'"></textarea>
+                    <button type="submit" {% if not api_key_set %}disabled{% endif %}>Send</button>
+                </form>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const log = document.getElementById('chat-log');
+    const form = document.getElementById('chat-form');
+    const ta = document.getElementById('addendum');
+    const useBtn = document.getElementById('use-proposal');
+    const saveBtn = document.getElementById('save-addendum');
+    const status = document.getElementById('save-status');
+    const courseSlug = {{ current_slug | tojson }};
+
+    const history = [];
+
+    function appendBubble(role, text) {
+        const div = document.createElement('div');
+        div.className = 'bubble bubble-' + role;
+        const label = document.createElement('div');
+        label.className = 'bubble-label';
+        label.textContent = role === 'user' ? 'You' : 'Claude';
+        const body = document.createElement('div');
+        body.className = 'bubble-body';
+        body.textContent = text;  // raw; Claude's markdown is shown verbatim
+        div.appendChild(label);
+        div.appendChild(body);
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function lastAssistantMarkdownBlock() {
+        for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].role !== 'assistant') continue;
+            const m = history[i].content.match(/```(?:markdown|md)?\s*([\s\S]*?)```/);
+            if (m) return m[1].trim();
+        }
+        return null;
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = form.message.value.trim();
+        if (!msg) return;
+        history.push({ role: 'user', content: msg });
+        appendBubble('user', msg);
+        form.message.value = '';
+        appendBubble('assistant', '…thinking…');
+        const placeholder = log.lastChild;
+        try {
+            const res = await fetch(`/prompt-tuner/${courseSlug}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history })
+            });
+            const data = await res.json();
+            placeholder.remove();
+            if (!res.ok) {
+                appendBubble('assistant', '⚠ ' + (data.error || 'request failed'));
+                history.pop();  // unwind so user can retry
+                return;
+            }
+            history.push({ role: 'assistant', content: data.text });
+            appendBubble('assistant', data.text);
+        } catch (err) {
+            placeholder.remove();
+            appendBubble('assistant', '⚠ ' + err);
+            history.pop();
+        }
+    });
+
+    useBtn.addEventListener('click', () => {
+        const block = lastAssistantMarkdownBlock();
+        if (block === null) {
+            status.innerHTML = '<span class="err">No ```markdown block found in Claude\'s recent messages yet.</span>';
+            return;
+        }
+        ta.value = block;
+        status.innerHTML = '<span class="ok">Loaded latest proposal into textarea (not yet saved).</span>';
+    });
+
+    saveBtn.addEventListener('click', async () => {
+        status.innerHTML = '<em>saving…</em>';
+        const res = await fetch(`/prompt-tuner/${courseSlug}/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ addendum: ta.value })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            status.innerHTML = `<span class="err">${data.error || 'save failed'}</span>`;
+            return;
+        }
+        if (data.exists) {
+            status.innerHTML = `<span class="ok">Saved (${data.length} chars). Will apply to the next generation.</span>`;
+        } else {
+            status.innerHTML = `<span class="ok">Cleared — course will use base prompt only.</span>`;
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+I've attached slides and transcript for a lecture. Can you generate a Markdown (.md) file that serves as notes? These notes should be a substitute for attending lecture and/or reading the slides. The goal is to have a more efficient way of learning the material, but it should still be comprehensive. This Markdown file should be explanatory, concise, and sufficient for a medical student to learn the concepts for the first time. Use sentences to explain concepts. Use bullet points conservatively, but feel free to use when it presents listable information efficiently without omitting any explanatory sentences. If you think the transcript contains confusing explanations, modify them to make it more accessible without compromising on depth.
+
+Prioritize foundation-upward understanding alongside efficiency. When a new term is introduced — an anatomic structure, embryologic derivative, hormone, receptor, named tract, or named sign/syndrome — briefly ground it in where it comes from (embryologic origin, biochemical precursor, position in a pathway), how it changes across the lifespan when relevant, and why the lecturer is invoking it now, before using it as a diagnostic, pharmacologic, or pathologic handle. Keep this scaffolding tight — a sentence or two per term, not a detour. Don't fabricate origins the transcript doesn't support; if the lecturer skips foundation that the rest of the lecture relies on, name the gap in one sentence and give the minimum scaffolding needed to make the rest of the lecture intelligible.
+
+Build each lecture as one continuous line of reasoning, not a glossary of independently defined terms. Open the lecture (and each major `##` section) with the question, problem, or clinical scenario the rest of the section answers. Introduce a term only at the point where the surrounding explanation actually needs it, and immediately put it to work in the next sentence. Use connective scaffolding — "which means…", "so…", "this is why…", "given that, the next step is…" — instead of stacking facts side by side. When several concepts appear in a section, make the relationship between them explicit (causal, temporal, anatomical, regulatory).
+
+This file is a *learning document*, not a transcript, summary, or paraphrase of the lecture. Your job is to transform what the lecturer said into the most efficient sequence for *building* understanding in a student's head — which often does not match the order the lecturer used. Reorder freely when the lecturer doubled back on a concept, foreshadowed something they explained later, or buried a foundational idea under clinical examples; pull foundations forward and clinical applications after. Compress aggressively when the transcript repeats itself, restates a concept multiple ways, or contains verbal filler — say each thing once, in its strongest form. Synthesize across adjacent slides: if three consecutive slides each carry one piece of a mechanism, write the mechanism as one continuous explanation rather than slide-by-slide. Do not narrate the lecture ("the lecturer next discussed…", "on this slide we see…") — write directly to the student in the second person or impersonally. Stay faithful to the lecturer's content, depth, and clinical emphasis, but not their structure or pacing. The student should finish the document with a coherent model of the topic, not a memory of how the lecture flowed.
+
+At the end of each non-trivial `##` section, the synthesis sentence(s) MUST be wrapped in a `:::synthesis` fenced block (not as plain trailing prose) so the student can scan section takeaways quickly during review:
+
+:::synthesis
+One or two sentences naming what the student now understands that they didn't a few paragraphs ago, and how it sets up the next section.
+:::
+
+Immediately after the synthesis block, include a `:::promptbox` with 1–2 short active-recall questions whose answers are contained in the section just covered. At least one question should be framed as "given X, what follows?" or "which feature distinguishes A from B?" rather than pure recall, so it rehearses the cognitive move exam questions test. Do not include the answers; the section above is the answer.
+
+:::promptbox
+1. (one self-test question)
+2. (optional second question — preferably a short clinical-vignette or "which entity?" framing)
+:::
+
+Skip both the synthesis block and the promptbox for short or purely transitional sections; reserve them for sections that introduced real conceptual material.
+
+For every named disease, syndrome, or pathologic entity introduced in the lecture, immediately after introducing it generate a brief clinical vignette in a `:::case` callout — even when the lecturer didn't supply one. The vignette should be 2–4 sentences sketching a plausible patient presentation: typical demographic, presenting complaint, key history features, and one or two physical / lab / imaging findings. Directly after the vignette, include two short bullet lists labeled exactly **Toward the diagnosis** (the features that should anchor recognition of this entity, ≤3 bullets, one line each) and **Away from the diagnosis** (features that would argue against it or favor a differential, with the most likely differential named, ≤3 bullets). The vignette must be plausible and faithful to how the entity actually presents — don't invent findings that contradict its pathophysiology. When a new entity is introduced in the same lecture as related entities, the **Away** bullets should explicitly contrast it with what was just covered so the reader sees how the entities relate rather than receiving them as parallel facts. Generate this `:::case` block for every named entity regardless of whether the transcript supplied a vignette; recognition skill comes from associating the entity with a presentation, not just a label, and exam questions live in this register. Format:
+
+:::case
+A 28-year-old woman G2P1 at 9 weeks' gestation presents with vaginal bleeding and lower abdominal cramping. She reports passage of tissue overnight. On exam she is hemodynamically stable; the cervical os is open and products of conception are visible. Quantitative β-hCG is 4,200 mIU/mL.
+
+**Toward the diagnosis:**
+- Vaginal bleeding plus open cervical os with visible products is the classic incomplete-abortion picture.
+- β-hCG below the typical first-trimester range and trending down supports failed pregnancy.
+
+**Away from the diagnosis:**
+- A closed cervical os and viable cardiac activity on ultrasound would shift toward threatened abortion instead.
+- A fixed adnexal mass with empty uterus and rising β-hCG would shift toward ectopic pregnancy.
+:::
+
+When a single lecture introduces three or more named entities that share a clinical or pathologic context (e.g. multiple ovarian tumors, multiple seizure types, multiple anemias, several spinal tracts), end the lecture with a `## Differential Drill` section containing a comparison table laid out for board-style discrimination. Pick 4–6 columns appropriate to the entity type — typically a combination of: typical patient demographic, key history feature, characteristic finding (lab, imaging, or histology), defining microscopy or pathologic marker, treatment first-line, and a one-line "key distinguishing feature" — and use the same columns across the table. Skip the drill if the lecture covered only one or two entities, or if the entities are too dissimilar to benefit from side-by-side comparison.
+
+If a "PRIOR LECTURES IN THIS COURSE" block is present in the system context, treat it as the student's existing scaffolding. When the current lecture relies on a concept already covered, anchor it with a brief cross-reference rather than re-deriving it. When it refines, contradicts, or qualifies something said earlier, flag that explicitly so the student updates their model. Use the prior content to choose what needs full explanation now versus a one-line callback. Cross-references should feel like "remember when we…" — short, pointed, only where they help. Don't invent prior coverage that isn't in the block.
+
+You can use intuition boxes if needed, written as a fenced block:
+
+:::intuitionbox
+Your intuition explanation here.
+:::
+
+The entire file should be under one top-level heading (`#`) with a title based on the powerpoint name. Within this, organize with `##` and `###` subheadings. When a new term shows up for the first time, bold it with `**term**` to emphasize its importance. If an idea or concept is important, italicize it with `*idea*`. Use normal straight double quotes `"..."`. If using mathematical symbols, use inline LaTeX math so KaTeX can render it (e.g. alpha should be `$\alpha$` and > should be `$>$`). The depth should be the same as the transcript. Do not go beyond the scope of the transcript, except for the cross-entity differential comparisons described above. If the transcript discusses what will/will not be on the exam (or any similar language), preface that at the beginning of the file with:
+
+:::questionbox[Exam Note]
+Your exam note here.
+:::
+
+Treat the lecturer's voice on what is and isn't testable as a strong signal for callout choice elsewhere in the notes. When the lecturer (or a slide note) explicitly flags something as testable, high yield, fair game, or in-scope for the exam, wrap that point in `:::questionbox title="High Yield"`. When they explicitly flag something as not on the exam, for context only, you don't need to memorize this, or skippable, wrap it in `:::supplemental`. Use these tags only when the lecturer actually said it — don't invent the cue.
+
+Include images selectively, only where a figure is genuinely load-bearing for understanding — not as decoration or because a slide happens to have a picture. The bar to embed: the image shows something the prose alone can't efficiently convey (a shape the student must learn to recognize, a spatial relationship, a characteristic visual signature). That includes anatomy and embryologic diagrams that are hard to describe in words, characteristic histology or gross pathology, imaging the student must learn to recognize on exams (X-ray, MRI, CT, ultrasound, mammography, microscopy), and decision algorithms or comparison tables whose visual structure carries information the prose would have to laboriously reconstruct. Skip: slides that are mostly bulleted text already captured in your prose, slides shown only to introduce or transition a concept the prose already explains, redundant images of the same structure shown earlier, and "title" or summary slides. Lean toward fewer, well-placed images rather than embedding most slides — a notes file dense with pictures fragments the linear narrative the prose is building, and the student ends up scrolling past redundant figures instead of reading a continuous explanation. When you do include an image, place it inline at the point in the prose where it's first relevant. Use standard Markdown image syntax (`![alt text](path/to/slide.png)`); the path is given in the user message as the "Lecture slug for image paths." Example for a 27-slide deck where the slug is `spinal-cord-overview`:
+
+![Neural plate folding into neural tube](images/spinal-cord-overview/slide-03.png)
+
+Never derive a slug yourself from the lecture title or filename — always use the slug provided in the user message.
+
+Start the file with `#` (the top-level title). No frontmatter or other setup needed.
+
+Format all tables in Markdown (GitHub-flavored) following these style conventions:
+
+- Use standard pipe-delimited Markdown tables with a header separator row (`| --- | --- |`).
+
+- Bold all column headers by wrapping the header cell text in `**...**`.
+
+- Do not use vertical rules or LaTeX table commands — plain Markdown only.
+
+- The first (label) column and data columns should be left-aligned by default (`| :--- |` if you need to be explicit, otherwise plain `| --- |` is fine).
+
+- If the table grows more complex, adapt minimally while preserving the same visual style:
+
+  - For grouped rows, insert a bold label row as a subheading row (a row where the first cell is `**Group Name**` and the other cells are empty) to separate groups.
+
+  - For multi-level headers, flatten them into a single header row with descriptive combined labels (e.g. "Stage I — Criteria"), since Markdown does not support spanning header cells.
+
+  - For very wide tables, abbreviate headers and add a legend below the table in italics (`*Abbrev: full name; ...*`) rather than wrapping text.

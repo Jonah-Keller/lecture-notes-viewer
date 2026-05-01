@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}{{ current_name or "Lecture Notes" }}{% endblock %}
+
+{% block body %}
+<div class="container">
+    <aside class="sidebar">
+        <h1 class="site-title">Lecture Notes</h1>
+
+        {% if topics %}
+        <select class="topic-select" onchange="window.location.href=this.value">
+            {% for t in topics %}
+            <option value="{{ url_for('topic_view', topic_slug=t.slug) }}"
+                    {% if t.slug == current_slug %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+
+        <details class="new-course">
+            <summary>+ New course</summary>
+            <form method="post" action="{{ url_for('new_course') }}" class="new-course-form">
+                <label>Name
+                    <input type="text" name="name" placeholder="e.g. Cardiology" required
+                           autocomplete="off">
+                </label>
+                <label>Slug <span class="hint">auto from name</span>
+                    <input type="text" name="slug" placeholder="cardiology"
+                           autocomplete="off" pattern="[a-z0-9-]+">
+                </label>
+                <button type="submit">Create course</button>
+            </form>
+        </details>
+        <script>
+        (function () {
+            const form = document.querySelector('.new-course-form');
+            if (!form) return;
+            const nameInput = form.elements['name'];
+            const slugInput = form.elements['slug'];
+            let userTouchedSlug = false;
+            slugInput.addEventListener('input', () => { userTouchedSlug = true; });
+            nameInput.addEventListener('input', () => {
+                if (userTouchedSlug) return;
+                slugInput.value = nameInput.value.toLowerCase()
+                    .replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-');
+            });
+        })();
+        </script>
+
+        {% if current_slug %}
+        <div class="sidebar-section">
+            <details class="uploader" {% if drafts %}{% else %}open{% endif %}>
+                <summary>+ New lecture</summary>
+                {% if not api_key_set %}
+                <p class="warn">Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to enable generation.</p>
+                {% endif %}
+                <form id="upload-form" enctype="multipart/form-data"
+                      data-course="{{ current_slug }}"
+                      data-suggested-number="{{ suggested_number }}">
+                    <label>Slides (PDF) <span class="hint">one or many</span>
+                        <input type="file" name="slides" accept="application/pdf" multiple required>
+                    </label>
+                    <label>Transcripts (.txt / .vtt / .srt) <span class="hint">match by filename</span>
+                        <input type="file" name="transcript" accept=".txt,.vtt,.srt,text/plain" multiple required>
+                    </label>
+                    <div id="pair-preview" class="pair-preview hint"></div>
+                    <details class="single-overrides">
+                        <summary>Overrides (single-file mode)</summary>
+                        <p class="hint">Used only when exactly one PDF is selected. Multi-file uploads always auto-derive title/slug/number per pair.</p>
+                        <label>Title
+                            <input type="text" name="title" placeholder="e.g. Fetal Growth Abnormalities">
+                        </label>
+                        <div class="row">
+                            <label class="narrow">#
+                                <input type="number" name="number" min="1" value="{{ suggested_number }}">
+                            </label>
+                            <label class="wide">slug
+                                <input type="text" name="slug" placeholder="fetal-growth-abnormalities">
+                            </label>
+                        </div>
+                    </details>
+                    <button type="submit" {% if not api_key_set %}disabled{% endif %}>Generate notes</button>
+                </form>
+                <div id="upload-status"></div>
+            </details>
+        </div>
+
+        {% if drafts %}
+        <div class="sidebar-section">
+            <h3>Drafts pending review</h3>
+            <ul class="draft-list">
+                {% for d in drafts %}
+                <li>
+                    <a href="{{ url_for('draft_view', course_slug=current_slug, draft_slug=d.slug) }}">
+                        <strong>{{ "%02d"|format(d.number) }}</strong> {{ d.title }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if published %}
+        <div class="sidebar-section">
+            <h3>Published lectures</h3>
+            <ul class="lecture-list">
+                {% for c in published %}
+                <li>
+                    <a href="#{{ c.slug }}" class="lecture-link">
+                        <strong>{{ "%02d"|format(c.number) }}</strong> {{ c.title }}
+                    </a>
+                    <form method="post"
+                          action="{{ url_for('delete_lecture', course_slug=current_slug, lecture_slug=c.slug) }}"
+                          onsubmit="return confirm('Delete lecture {{ '%02d'|format(c.number) }} — {{ c.title|e }}? This removes the .md file, rendered images, and uploaded source.');">
+                        <button type="submit" class="delete-x" title="Delete lecture">×</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="sidebar-section">
+            <a class="master-link" href="{{ url_for('master_view', course_slug=current_slug) }}">
+                Master document {% if not master_exists %}<span class="hint">(not built yet)</span>{% endif %}
+            </a>
+            <a class="pdf-link" href="{{ url_for('topic_pdf', topic_slug=current_slug) }}">
+                ⬇ Download course PDF
+            </a>
+            <a class="pdf-link" href="{{ url_for('master_pdf', course_slug=current_slug) }}">
+                ⬇ Download master PDF
+            </a>
+            <p class="hint">PDF takes 10–60s to render; tab will hang briefly.</p>
+        </div>
+
+        <div class="sidebar-section">
+            <a class="tuner-link" href="{{ url_for('prompt_tuner_view', course_slug=current_slug) }}">
+                ✎ Tune prompt for this course
+            </a>
+            <p class="hint">Chat with Claude to refine how notes are written for {{ current_name }}.</p>
+        </div>
+        {% endif %}
+
+        {% if anchors %}
+        <nav class="sidebar-nav">
+            {% for a in anchors %}
+            <a href="#{{ a.id }}">{{ a.title }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+    </aside>
+    <main class="main-content">
+        <article class="markdown-content">
+            {{ content | safe }}
+        </article>
+    </main>
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById('upload-form');
+    if (!form) return;
+    const statusEl = document.getElementById('upload-status');
+    const previewEl = document.getElementById('pair-preview');
+    const course = form.dataset.course;
+
+    function stem(name) {
+        return name.replace(/\.[^.]+$/, '').toLowerCase()
+                   .replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function pairFiles(pdfs, transcripts) {
+        const tIndex = new Map();
+        for (const t of transcripts) tIndex.set(stem(t.name), t);
+        const matched = [];
+        const unpaired = [];
+        for (const p of pdfs) {
+            const t = tIndex.get(stem(p.name));
+            if (t) matched.push({ pdf: p, transcript: t });
+            else unpaired.push(p.name);
+        }
+        const usedTranscripts = new Set(matched.map(m => m.transcript.name));
+        const orphanTranscripts = Array.from(transcripts)
+            .filter(t => !usedTranscripts.has(t.name))
+            .map(t => t.name);
+        // Fallback: if stems matched zero pairs, but PDF and transcript counts
+        // are equal, propose pairing by sorted-alphabetical order (the common
+        // case where filenames don't share stems but the user uploaded them
+        // in matching order).
+        let fallbackByOrder = null;
+        if (matched.length === 0 && pdfs.length === transcripts.length && pdfs.length > 0) {
+            const sortedPdfs = [...pdfs].sort((a, b) => a.name.localeCompare(b.name));
+            const sortedTx = [...transcripts].sort((a, b) => a.name.localeCompare(b.name));
+            fallbackByOrder = sortedPdfs.map((p, i) => ({ pdf: p, transcript: sortedTx[i] }));
+        }
+        return { matched, unpaired, orphanTranscripts, fallbackByOrder };
+    }
+
+    function renderPairPreview() {
+        const pdfs = Array.from(form.slides.files);
+        const transcripts = Array.from(form.transcript.files);
+        if (!pdfs.length && !transcripts.length) {
+            previewEl.innerHTML = '';
+            return;
+        }
+        const { matched, unpaired, orphanTranscripts, fallbackByOrder } =
+            pairFiles(pdfs, transcripts);
+        let html = '';
+        if (matched.length) {
+            html += `<strong>${matched.length} lecture${matched.length === 1 ? '' : 's'} ready (matched by filename):</strong>`;
+            html += '<ul class="pair-list">';
+            for (const m of matched) {
+                html += `<li><span class="pair-pdf">${m.pdf.name}</span> ↔ <span class="pair-tx">${m.transcript.name}</span></li>`;
+            }
+            html += '</ul>';
+        } else if (fallbackByOrder) {
+            html += `<strong>Filenames don't share stems, but counts match. Will pair in sorted order:</strong>`;
+            html += '<ul class="pair-list">';
+            for (const m of fallbackByOrder) {
+                html += `<li><span class="pair-pdf">${m.pdf.name}</span> ↔ <span class="pair-tx">${m.transcript.name}</span></li>`;
+            }
+            html += '</ul>';
+            html += '<div class="hint">Confirm on submit. To force a different pairing, rename files to share stems.</div>';
+        }
+        if (unpaired.length) {
+            html += `<div class="warn">PDFs without a matching transcript: ${unpaired.join(', ')}</div>`;
+        }
+        if (orphanTranscripts.length) {
+            html += `<div class="warn">Transcripts without a matching PDF: ${orphanTranscripts.join(', ')}</div>`;
+        }
+        previewEl.innerHTML = html;
+    }
+
+    form.slides.addEventListener('change', () => {
+        renderPairPreview();
+        // Single-PDF: auto-fill title/slug overrides if untouched.
+        if (form.slides.files.length === 1) {
+            const file = form.slides.files[0];
+            const s = file.name.replace(/\.pdf$/i, '').replace(/[_]+/g, ' ').trim();
+            if (!form.title.value) form.title.value = s;
+            if (!form.slug.value) {
+                form.slug.value = s.toLowerCase()
+                    .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
+            }
+        } else {
+            // Multi-PDF: blank the override fields so the server auto-derives per pair.
+            form.title.value = '';
+            form.slug.value = '';
+            form.number.value = '';
+        }
+    });
+    form.transcript.addEventListener('change', renderPairPreview);
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn.disabled) return;  // already in flight; ignore double-clicks
+        const pdfs = Array.from(form.slides.files);
+        const transcripts = Array.from(form.transcript.files);
+        if (!pdfs.length || !transcripts.length) {
+            statusEl.innerHTML = '<span class="err">Pick at least one PDF and one transcript.</span>';
+            return;
+        }
+        let { matched, unpaired, fallbackByOrder } = pairFiles(pdfs, transcripts);
+        if (!matched.length && fallbackByOrder) {
+            const summary = fallbackByOrder
+                .map(m => `  ${m.pdf.name}  ↔  ${m.transcript.name}`).join('\n');
+            const ok = confirm(
+                "Filenames don't share stems. Pair in sorted alphabetical order?\n\n"
+                + summary
+                + "\n\nClick OK to proceed with this pairing."
+            );
+            if (!ok) return;
+            matched = fallbackByOrder;
+        }
+        if (!matched.length) {
+            statusEl.innerHTML = '<span class="err">No PDF/transcript pairs found.</span>';
+            return;
+        }
+        if (unpaired.length) {
+            const ok = confirm(
+                `${unpaired.length} PDF(s) won't be uploaded (no matching transcript): \n` +
+                unpaired.join('\n') + '\n\nProceed with the ' + matched.length + ' that paired?'
+            );
+            if (!ok) return;
+        }
+        statusEl.innerHTML = '';
+        const overrides = matched.length === 1 ? {
+            title: form.title.value.trim(),
+            slug: form.slug.value.trim(),
+            number: form.number.value.trim(),
+        } : { title: '', slug: '', number: '' };
+
+        // Disable the button while requests are in flight to prevent the
+        // accidental-double-submit case that spawns duplicate jobs for the
+        // same slug.
+        submitBtn.disabled = true;
+        const originalLabel = submitBtn.textContent;
+        submitBtn.textContent = 'Uploading…';
+        try {
+            statusEl.innerHTML = '';
+            // Fire all uploads concurrently so the per-course number lock
+            // assigns sequential numbers as each request enters its critical
+            // section.
+            await Promise.all(matched.map(m => uploadOne(m, overrides)));
+            // Leave a brief acknowledgment; floating panel takes over.
+            statusEl.insertAdjacentHTML('afterbegin',
+                `<div class="ok">${matched.length} upload${matched.length === 1 ? '' : 's'} queued — track them in the panel at the bottom-right.</div>`);
+            form.reset();
+            previewEl.innerHTML = '';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalLabel;
+        }
+    });
+
+    async function uploadOne(pair, overrides) {
+        const fd = new FormData();
+        fd.append('slides', pair.pdf);
+        fd.append('transcript', pair.transcript);
+        if (overrides.title) fd.append('title', overrides.title);
+        if (overrides.slug) fd.append('slug', overrides.slug);
+        if (overrides.number) fd.append('number', overrides.number);
+        try {
+            const res = await fetch(`/upload/${course}`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) {
+                appendUploadError(`${pair.pdf.name}: ${data.error || 'upload failed'}`);
+                return;
+            }
+            // Track happens in the floating panel (polls /jobs/active).
+        } catch (err) {
+            appendUploadError(`${pair.pdf.name}: ${err}`);
+        }
+    }
+
+    function appendUploadError(msg) {
+        const div = document.createElement('div');
+        div.className = 'upload-error';
+        div.textContent = msg;
+        statusEl.appendChild(div);
+    }
+
+    function escapeHtml(s) {
+        return (s || '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+})();
+</script>
+{% endblock %}

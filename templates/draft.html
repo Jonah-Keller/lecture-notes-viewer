@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Draft: {{ draft_filename }}{% endblock %}
+
+{% block body %}
+<div class="container">
+    <aside class="sidebar">
+        <h1 class="site-title">Draft review</h1>
+        <p class="hint">{{ current_name }} / {{ draft_filename }}</p>
+
+        <form method="post" action="{{ url_for('publish', course_slug=current_slug, draft_slug=draft_slug) }}">
+            <button type="submit" class="publish">Publish into course</button>
+        </form>
+        <form method="post" action="{{ url_for('discard_draft', course_slug=current_slug, draft_slug=draft_slug) }}"
+              onsubmit="return confirm('Delete this draft and its rendered slide images?');">
+            <button type="submit" class="discard">Discard draft</button>
+        </form>
+        <a class="pdf-link" href="{{ url_for('draft_pdf', course_slug=current_slug, draft_slug=draft_slug) }}">
+            ⬇ Download as PDF
+        </a>
+        <p><a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to {{ current_name }}</a></p>
+
+        {% if anchors %}
+        <nav class="sidebar-nav">
+            {% for a in anchors %}
+            <a href="#{{ a.id }}">{{ a.title }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+    </aside>
+    <main class="main-content">
+        <div class="draft-banner">Reviewing draft — not yet published</div>
+        <article class="markdown-content">
+            {{ content | safe }}
+        </article>
+    </main>
+</div>
+{% endblock %}

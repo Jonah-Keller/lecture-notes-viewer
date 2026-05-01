@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Lecture Notes{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script defer src="{{ url_for('static', filename='js/job-panel.js') }}"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+              delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '\\[', right: '\\]', display: true},
+                {left: '$',  right: '$',  display: false},
+                {left: '\\(', right: '\\)', display: false}
+              ],
+              throwOnError: false
+            });"></script>
+</head>
+<body>
+    {% block body %}{% endblock %}
+    <aside id="job-panel" class="job-panel hidden" aria-live="polite">
+        <header class="job-panel-header">
+            <span class="job-panel-title">Active generations</span>
+            <span class="job-panel-count" id="job-panel-count">0</span>
+            <button type="button" class="job-panel-collapse" id="job-panel-collapse" title="Collapse">–</button>
+        </header>
+        <ul class="job-panel-list" id="job-panel-list"></ul>
+    </aside>
+</body>
+</html>
