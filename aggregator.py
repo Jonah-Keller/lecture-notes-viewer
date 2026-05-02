@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
+from typing import Optional
 
 import yaml
 
@@ -36,7 +37,7 @@ def _course_name(course_dir: Path) -> str:
     return course_dir.name.replace("-", " ").title()
 
 
-def build_master(course: str) -> Path | None:
+def build_master(course: str) -> Optional[Path]:
     course_dir = CONTENT_DIR / course
     if not course_dir.is_dir():
         return None

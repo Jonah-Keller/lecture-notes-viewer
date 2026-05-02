@@ -6,6 +6,7 @@ import threading
 import xml.etree.ElementTree as etree
 from collections import defaultdict
 from pathlib import Path
+from typing import Optional
 
 import markdown
 import yaml
@@ -195,7 +196,7 @@ def _list_drafts(course_slug: str) -> list[dict]:
     return out
 
 
-def _first_heading(md_path: Path) -> str | None:
+def _first_heading(md_path: Path) -> Optional[str]:
     try:
         with md_path.open(encoding="utf-8") as f:
             for line in f:

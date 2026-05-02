@@ -23,7 +23,7 @@ import traceback
 import uuid
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import fitz  # PyMuPDF
 from PIL import Image
@@ -99,7 +99,7 @@ class JobStore:
             job.touch(**kwargs)
         self._persist(job)
 
-    def get(self, job_id: str) -> Job | None:
+    def get(self, job_id: str) -> Optional[Job]:
         with self._lock:
             job = self._jobs.get(job_id)
         if job:
@@ -121,7 +121,7 @@ class JobStore:
         except OSError:
             pass  # non-fatal; state still held in memory
 
-    def find_active(self, course: str, slug: str) -> Job | None:
+    def find_active(self, course: str, slug: str) -> Optional[Job]:
         """Return any in-flight job (queued/rendering/generating/writing) for
         this (course, slug). Used to make /upload idempotent against
         accidental double-submission."""
@@ -193,7 +193,7 @@ def render_pdf_to_slides(
     dpi: int = DEFAULT_DPI,
     max_edge: int = DEFAULT_MAX_EDGE,
     jpeg_quality: int = DEFAULT_JPEG_QUALITY,
-    progress: Callable[[int, int], None] | None = None,
+    progress: Optional[Callable[[int, int], None]] = None,
 ) -> list[Path]:
     """Render each PDF page to JPEG. 1-indexed, zero-padded filenames.
     JPEG (rather than PNG) keeps total payload under Anthropic's ~32 MB request
@@ -244,7 +244,7 @@ def _encode_image(path: Path) -> dict:
     }
 
 
-def _load_prompt(course: str | None = None) -> str:
+def _load_prompt(course: Optional[str] = None) -> str:
     """Return the base prompt, optionally augmented with the course-specific
     addendum at content/<course>/prompt.md. The addendum is appended under a
     "Course-specific guidance" heading so the model sees it after the global
@@ -304,10 +304,10 @@ def call_claude(
     slide_images: list[Path],
     lecture_title: str,
     course_name: str,
-    course_slug: str | None = None,
-    lecture_slug: str | None = None,
+    course_slug: Optional[str] = None,
+    lecture_slug: Optional[str] = None,
     model: str = DEFAULT_MODEL,
-    on_text: Callable[[str], None] | None = None,
+    on_text: Optional[Callable[[str], None]] = None,
 ) -> str:
     """Stream a generation and return the full markdown string."""
     if Anthropic is None:
@@ -519,7 +519,7 @@ def start_generation(
     pdf_path: Path,
     transcript_path: Path,
     transcript_suffix: str,
-    on_done: Callable[[Job], None] | None = None,
+    on_done: Optional[Callable[[Job], None]] = None,
 ) -> Job:
     """Create a job and run it in a background thread."""
     job = JOB_STORE.create(course=course, slug=slug, number=number, title=title)
