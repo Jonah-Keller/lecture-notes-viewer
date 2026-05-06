@@ -1,0 +1,177 @@
+{# Reusable library tree. Expects `library` (list of course dicts) and
+   `current_slug` in context. Each course dict: { slug, name, drafts,
+   published, is_current }. Drafts come first, then published, sorted by
+   leading number. State (which course is collapsed) lives in localStorage. #}
+<div class="library" id="library-tree">
+    <div class="library-head">
+        <span>Your library</span>
+        <span class="library-actions">
+            <a data-lib-action="expand">expand all</a>
+            <span style="color: var(--zinc-700)">·</span>
+            <a data-lib-action="collapse">collapse all</a>
+        </span>
+    </div>
+
+    {% for course in library %}
+    {% set total = (course.drafts|length) + (course.published|length) %}
+    <div class="lib-course {% if course.is_current %}is-current{% endif %}"
+         data-course-slug="{{ course.slug }}"
+         aria-collapsed="{% if course.is_current %}false{% else %}true{% endif %}">
+        <div class="lib-course-head"
+             aria-expanded="{% if course.is_current %}true{% else %}false{% endif %}"
+             data-lib-toggle="{{ course.slug }}">
+            <span class="twist">▶</span>
+            <span class="lib-course-name">
+                {% if course.is_current %}{{ course.name }}{% else %}<a href="{{ url_for('topic_view', topic_slug=course.slug) }}" style="color:inherit">{{ course.name }}</a>{% endif %}
+            </span>
+            <span class="lib-course-count">{{ total }}</span>
+        </div>
+        <ul class="lib-list">
+            {% if not course.drafts and not course.published %}
+            <li class="lib-empty">No notes yet.</li>
+            {% endif %}
+
+            {% for d in course.drafts %}
+            <li class="lib-item">
+                <a href="{{ url_for('draft_view', course_slug=course.slug, draft_slug=d.slug) }}">
+                    <span class="lib-num">{{ "%02d"|format(d.number) }}</span>
+                    <span class="lib-body">
+                        <span class="lib-title">{{ d.title }}</span>
+                        <span class="lib-meta">
+                            <span class="badge badge-draft">draft</span>
+                        </span>
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+
+            {% for c in course.published %}
+            {% set is_active = (course.is_current and active_lecture_slug is defined and active_lecture_slug == c.slug) %}
+            <li class="lib-item {% if is_active %}is-active{% endif %}">
+                {% if course.is_current %}
+                <a href="#{{ c.slug }}" data-lib-anchor="{{ c.slug }}">
+                {% else %}
+                <a href="{{ url_for('topic_view', topic_slug=course.slug) }}#{{ c.slug }}">
+                {% endif %}
+                    <span class="lib-num">{{ "%02d"|format(c.number) }}</span>
+                    <span class="lib-body">
+                        <span class="lib-title">{{ c.title }}</span>
+                    </span>
+                </a>
+                {% if course.is_current %}
+                <form method="post"
+                      action="{{ url_for('delete_lecture', course_slug=course.slug, lecture_slug=c.slug) }}"
+                      class="lib-delete"
+                      onsubmit="return confirm('Delete lecture {{ '%02d'|format(c.number) }} — {{ c.title|e }}? This removes the .md file, rendered images, and uploaded source.');">
+                    <button type="submit" title="Delete lecture">×</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+
+    <details class="new-course">
+        <summary>+ New course</summary>
+        <form method="post" action="{{ url_for('new_course') }}" class="new-course-form">
+            <div class="field">
+                <span class="field-label">Name</span>
+                <input class="input" type="text" name="name" placeholder="e.g. Cardiology" required autocomplete="off">
+            </div>
+            <div class="field">
+                <span class="field-label">Slug <span class="field-hint">auto from name</span></span>
+                <input class="input" type="text" name="slug" placeholder="cardiology" autocomplete="off" pattern="[a-z0-9-]+">
+            </div>
+            <button class="btn btn-primary btn-sm" type="submit">Create course</button>
+        </form>
+    </details>
+</div>
+
+<script>
+(function () {
+    const tree = document.getElementById('library-tree');
+    if (!tree) return;
+    const STORAGE_KEY = 'lnv.collapsedCourses';
+
+    function loadCollapsed() {
+        try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); }
+        catch { return new Set(); }
+    }
+    function saveCollapsed(set) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(set))); } catch {}
+    }
+    function applyState() {
+        const collapsed = loadCollapsed();
+        tree.querySelectorAll('.lib-course').forEach(el => {
+            const slug = el.dataset.courseSlug;
+            const head = el.querySelector('.lib-course-head');
+            // Default: course-of-current-page expanded, others collapsed,
+            // unless localStorage says otherwise.
+            const userPref = collapsed.has(slug);
+            const defaultCollapsed = !el.classList.contains('is-current');
+            const isCollapsed = collapsed.has('@all-expanded') ? false :
+                                collapsed.has('@all-collapsed') ? true :
+                                userPref || defaultCollapsed;
+            el.setAttribute('aria-collapsed', isCollapsed ? 'true' : 'false');
+            head.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        });
+    }
+    applyState();
+
+    tree.addEventListener('click', (e) => {
+        const head = e.target.closest('[data-lib-toggle]');
+        if (head) {
+            // Don't collapse when clicking the inline course-name link.
+            if (e.target.tagName === 'A' && e.target.closest('.lib-course-name')) return;
+            const slug = head.dataset.libToggle;
+            const collapsed = loadCollapsed();
+            collapsed.delete('@all-expanded');
+            collapsed.delete('@all-collapsed');
+            if (collapsed.has(slug)) collapsed.delete(slug); else collapsed.add(slug);
+            saveCollapsed(collapsed);
+            applyState();
+            return;
+        }
+        const action = e.target.closest('[data-lib-action]');
+        if (action) {
+            const collapsed = new Set();
+            if (action.dataset.libAction === 'collapse') {
+                tree.querySelectorAll('.lib-course').forEach(el => collapsed.add(el.dataset.courseSlug));
+            }
+            // 'expand' = empty set
+            saveCollapsed(collapsed);
+            applyState();
+        }
+    });
+
+    // Highlight the lecture whose anchor is currently in view.
+    const items = tree.querySelectorAll('.lib-item[data-lib-anchor], .lib-item a[data-lib-anchor]');
+    function setActiveBySlug(slug) {
+        tree.querySelectorAll('.lib-item.is-active').forEach(el => el.classList.remove('is-active'));
+        if (!slug) return;
+        const a = tree.querySelector(`.lib-item a[data-lib-anchor="${CSS.escape(slug)}"]`);
+        if (a) a.parentElement.classList.add('is-active');
+    }
+    function fromHash() {
+        const h = location.hash.replace('#', '');
+        if (h) setActiveBySlug(h);
+    }
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+
+    // Auto-derive course slug from name in the "+ New course" form.
+    const newCourse = tree.querySelector('.new-course-form');
+    if (newCourse) {
+        const nameEl = newCourse.elements['name'];
+        const slugEl = newCourse.elements['slug'];
+        let userTouched = false;
+        slugEl.addEventListener('input', () => { userTouched = true; });
+        nameEl.addEventListener('input', () => {
+            if (userTouched) return;
+            slugEl.value = nameEl.value.toLowerCase()
+                .replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-');
+        });
+    }
+})();
+</script>

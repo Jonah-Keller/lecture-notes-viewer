@@ -5,20 +5,31 @@
 {% block body %}
 <div class="container">
     <aside class="sidebar">
-        <h1 class="site-title">Draft review</h1>
-        <p class="hint">{{ current_name }} / {{ draft_filename }}</p>
+        <div class="brand">
+            <span class="brand-mark">PSOM</span>
+            <span class="brand-title">Draft review</span>
+        </div>
+        <div class="card" style="padding: 14px;">
+            <div class="field-hint" style="margin-bottom: 10px;">
+                {{ current_name }} / <code>{{ draft_filename }}</code>
+            </div>
+            <form method="post" action="{{ url_for('publish', course_slug=current_slug, draft_slug=draft_slug) }}">
+                <button type="submit" class="btn btn-primary btn-block">Publish into course</button>
+            </form>
+            <form method="post" action="{{ url_for('discard_draft', course_slug=current_slug, draft_slug=draft_slug) }}"
+                  onsubmit="return confirm('Delete this draft and its rendered slide images?');"
+                  style="margin-top: 8px;">
+                <button type="submit" class="btn btn-danger btn-block">Discard draft</button>
+            </form>
+            <a class="btn btn-block" style="margin-top: 8px;"
+               href="{{ url_for('draft_pdf', course_slug=current_slug, draft_slug=draft_slug) }}">⬇ Download as PDF</a>
+        </div>
 
-        <form method="post" action="{{ url_for('publish', course_slug=current_slug, draft_slug=draft_slug) }}">
-            <button type="submit" class="publish">Publish into course</button>
-        </form>
-        <form method="post" action="{{ url_for('discard_draft', course_slug=current_slug, draft_slug=draft_slug) }}"
-              onsubmit="return confirm('Delete this draft and its rendered slide images?');">
-            <button type="submit" class="discard">Discard draft</button>
-        </form>
-        <a class="pdf-link" href="{{ url_for('draft_pdf', course_slug=current_slug, draft_slug=draft_slug) }}">
-            ⬇ Download as PDF
-        </a>
-        <p><a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to {{ current_name }}</a></p>
+        <div class="meta-links">
+            <a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to {{ current_name }}</a>
+        </div>
+
+        {% include "_library.html" %}
 
         {% if anchors %}
         <nav class="sidebar-nav">
@@ -29,7 +40,7 @@
         {% endif %}
     </aside>
     <main class="main-content">
-        <div class="draft-banner">Reviewing draft — not yet published</div>
+        <div class="draft-banner">⚠ Reviewing draft — not yet published</div>
         <article class="markdown-content">
             {{ content | safe }}
         </article>

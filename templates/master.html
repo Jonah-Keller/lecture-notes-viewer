@@ -5,14 +5,22 @@
 {% block body %}
 <div class="container">
     <aside class="sidebar">
-        <h1 class="site-title">{{ current_name }} — master</h1>
-        <p><a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to chapter view</a></p>
+        <div class="brand">
+            <span class="brand-mark">PSOM</span>
+            <span class="brand-title">Master · {{ current_name }}</span>
+        </div>
+
+        <div class="meta-links">
+            <a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to chapter view</a>
+            <a href="{{ url_for('master_pdf', course_slug=current_slug) }}">⬇ Download as PDF</a>
+        </div>
+
         <form method="post" action="{{ url_for('master_rebuild', course_slug=current_slug) }}">
-            <button type="submit">Rebuild master now</button>
+            <button type="submit" class="btn btn-block">Rebuild master now</button>
         </form>
-        <a class="pdf-link" href="{{ url_for('master_pdf', course_slug=current_slug) }}">
-            ⬇ Download as PDF
-        </a>
+
+        {% include "_library.html" %}
+
         {% if anchors %}
         <nav class="sidebar-nav">
             {% for a in anchors %}

@@ -3,46 +3,58 @@
 {% block title %}Tune prompt — {{ current_name }}{% endblock %}
 
 {% block body %}
-<div class="container tuner-container">
+<div class="container">
     <aside class="sidebar">
-        <h1 class="site-title">Prompt tuner</h1>
-        <p class="hint">Course: <strong>{{ current_name }}</strong></p>
-        <p><a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to {{ current_name }}</a></p>
-        {% if not api_key_set %}
-        <p class="warn">Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to chat with Claude.</p>
-        {% endif %}
-        <p class="hint">
-            The base prompt at <code>prompt.txt</code> runs for every lecture in every course.
-            Anything you save here becomes a course-only addendum at
-            <code>content/{{ current_slug }}/prompt.md</code>.
-            It's appended after the base prompt — refines, doesn't replace.
-        </p>
-        <details class="base-prompt-details">
-            <summary>Show base prompt</summary>
-            <pre class="base-prompt">{{ base_prompt }}</pre>
-        </details>
+        <div class="brand">
+            <span class="brand-mark">PSOM</span>
+            <span class="brand-title">Prompt tuner</span>
+        </div>
+        <div class="card" style="padding: 14px;">
+            <div class="field-hint" style="margin-bottom: 8px;">
+                Course: <strong style="color:var(--zinc-100)">{{ current_name }}</strong>
+            </div>
+            {% if not api_key_set %}
+            <div class="banner banner-warn">Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to chat with Claude.</div>
+            {% endif %}
+            <p class="field-hint">
+                The base prompt at <code>prompt.txt</code> runs for every lecture in every course.
+                Anything saved here becomes a course-only addendum at
+                <code>content/{{ current_slug }}/prompt.md</code> — appended after the base, refines, doesn't replace.
+            </p>
+            <details class="base-prompt-details">
+                <summary>Show base prompt</summary>
+                <pre class="base-prompt">{{ base_prompt }}</pre>
+            </details>
+        </div>
+
+        <div class="meta-links">
+            <a href="{{ url_for('topic_view', topic_slug=current_slug) }}">← back to {{ current_name }}</a>
+        </div>
+
+        {% include "_library.html" %}
     </aside>
-    <main class="main-content tuner-main">
+
+    <main class="main-content">
         <div class="tuner-grid">
             <section class="tuner-pane addendum-pane">
                 <h2>Course addendum</h2>
                 <p class="hint">Source of truth — what gets saved and appended at generation time.</p>
-                <textarea id="addendum" rows="22"
+                <textarea id="addendum" class="textarea" rows="22"
                           placeholder="Course-specific rules go here. Click 'Use Claude's last proposal' to pull in the most recent ```markdown block from the chat.">{{ addendum }}</textarea>
-                <div class="row">
-                    <button id="use-proposal" type="button">Use Claude's last proposal</button>
-                    <button id="save-addendum" type="button" class="primary">Save addendum</button>
+                <div class="row" style="margin-top:10px;flex-wrap:wrap;">
+                    <button id="use-proposal" type="button" class="btn">Use Claude's last proposal</button>
+                    <button id="save-addendum" type="button" class="btn btn-primary">Save addendum</button>
                 </div>
-                <div id="save-status" class="hint"></div>
+                <div id="save-status" class="hint" style="margin-top:8px;"></div>
             </section>
             <section class="tuner-pane chat-pane">
                 <h2>Chat with Claude</h2>
                 <p class="hint">Sonnet 4.6. Tell it what you want notes to do for this course.</p>
                 <div id="chat-log"></div>
                 <form id="chat-form">
-                    <textarea name="message" rows="3" required
+                    <textarea name="message" rows="3" required class="textarea"
                               placeholder="e.g. 'For each disease, I want a short clinical-differentials list with the 2–3 things it gets confused with and one line each on the distinguishing feature, even if the lecture doesn't mention them.'"></textarea>
-                    <button type="submit" {% if not api_key_set %}disabled{% endif %}>Send</button>
+                    <button type="submit" class="btn btn-primary" {% if not api_key_set %}disabled{% endif %}>Send</button>
                 </form>
             </section>
         </div>
@@ -58,7 +70,6 @@
     const saveBtn = document.getElementById('save-addendum');
     const status = document.getElementById('save-status');
     const courseSlug = {{ current_slug | tojson }};
-
     const history = [];
 
     function appendBubble(role, text) {
@@ -69,13 +80,11 @@
         label.textContent = role === 'user' ? 'You' : 'Claude';
         const body = document.createElement('div');
         body.className = 'bubble-body';
-        body.textContent = text;  // raw; Claude's markdown is shown verbatim
-        div.appendChild(label);
-        div.appendChild(body);
+        body.textContent = text;
+        div.appendChild(label); div.appendChild(body);
         log.appendChild(div);
         log.scrollTop = log.scrollHeight;
     }
-
     function lastAssistantMarkdownBlock() {
         for (let i = history.length - 1; i >= 0; i--) {
             if (history[i].role !== 'assistant') continue;
@@ -84,7 +93,6 @@
         }
         return null;
     }
-
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const msg = form.message.value.trim();
@@ -102,46 +110,31 @@
             });
             const data = await res.json();
             placeholder.remove();
-            if (!res.ok) {
-                appendBubble('assistant', '⚠ ' + (data.error || 'request failed'));
-                history.pop();  // unwind so user can retry
-                return;
-            }
+            if (!res.ok) { appendBubble('assistant', '⚠ ' + (data.error || 'request failed')); history.pop(); return; }
             history.push({ role: 'assistant', content: data.text });
             appendBubble('assistant', data.text);
         } catch (err) {
-            placeholder.remove();
-            appendBubble('assistant', '⚠ ' + err);
-            history.pop();
+            placeholder.remove(); appendBubble('assistant', '⚠ ' + err); history.pop();
         }
     });
-
     useBtn.addEventListener('click', () => {
         const block = lastAssistantMarkdownBlock();
-        if (block === null) {
-            status.innerHTML = '<span class="err">No ```markdown block found in Claude\'s recent messages yet.</span>';
-            return;
-        }
+        if (block === null) { status.innerHTML = '<span class="err" style="color:var(--red-300)">No ```markdown block found in Claude\'s recent messages yet.</span>'; return; }
         ta.value = block;
-        status.innerHTML = '<span class="ok">Loaded latest proposal into textarea (not yet saved).</span>';
+        status.innerHTML = '<span class="ok" style="color:var(--emerald-300)">Loaded latest proposal into textarea (not yet saved).</span>';
     });
-
     saveBtn.addEventListener('click', async () => {
         status.innerHTML = '<em>saving…</em>';
         const res = await fetch(`/prompt-tuner/${courseSlug}/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ addendum: ta.value })
         });
         const data = await res.json();
-        if (!res.ok) {
-            status.innerHTML = `<span class="err">${data.error || 'save failed'}</span>`;
-            return;
-        }
+        if (!res.ok) { status.innerHTML = `<span style="color:var(--red-300)">${data.error || 'save failed'}</span>`; return; }
         if (data.exists) {
-            status.innerHTML = `<span class="ok">Saved (${data.length} chars). Will apply to the next generation.</span>`;
+            status.innerHTML = `<span style="color:var(--emerald-300)">Saved (${data.length} chars). Will apply to the next generation.</span>`;
         } else {
-            status.innerHTML = `<span class="ok">Cleared — course will use base prompt only.</span>`;
+            status.innerHTML = `<span style="color:var(--emerald-300)">Cleared — course will use base prompt only.</span>`;
         }
     });
 })();

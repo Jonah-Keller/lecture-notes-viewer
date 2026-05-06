@@ -5,138 +5,85 @@
 {% block body %}
 <div class="container">
     <aside class="sidebar">
-        <h1 class="site-title">Lecture Notes</h1>
-
-        {% if topics %}
-        <select class="topic-select" onchange="window.location.href=this.value">
-            {% for t in topics %}
-            <option value="{{ url_for('topic_view', topic_slug=t.slug) }}"
-                    {% if t.slug == current_slug %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-        </select>
-        {% endif %}
-
-        <details class="new-course">
-            <summary>+ New course</summary>
-            <form method="post" action="{{ url_for('new_course') }}" class="new-course-form">
-                <label>Name
-                    <input type="text" name="name" placeholder="e.g. Cardiology" required
-                           autocomplete="off">
-                </label>
-                <label>Slug <span class="hint">auto from name</span>
-                    <input type="text" name="slug" placeholder="cardiology"
-                           autocomplete="off" pattern="[a-z0-9-]+">
-                </label>
-                <button type="submit">Create course</button>
-            </form>
-        </details>
-        <script>
-        (function () {
-            const form = document.querySelector('.new-course-form');
-            if (!form) return;
-            const nameInput = form.elements['name'];
-            const slugInput = form.elements['slug'];
-            let userTouchedSlug = false;
-            slugInput.addEventListener('input', () => { userTouchedSlug = true; });
-            nameInput.addEventListener('input', () => {
-                if (userTouchedSlug) return;
-                slugInput.value = nameInput.value.toLowerCase()
-                    .replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-');
-            });
-        })();
-        </script>
+        <div class="brand">
+            <span class="brand-mark">PSOM</span>
+            <span class="brand-title">Lecture notes</span>
+        </div>
 
         {% if current_slug %}
-        <div class="sidebar-section">
-            <details class="uploader" {% if drafts %}{% else %}open{% endif %}>
-                <summary>+ New lecture</summary>
-                {% if not api_key_set %}
-                <p class="warn">Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to enable generation.</p>
-                {% endif %}
-                <form id="upload-form" enctype="multipart/form-data"
-                      data-course="{{ current_slug }}"
-                      data-suggested-number="{{ suggested_number }}">
-                    <label>Slides (PDF) <span class="hint">one or many</span>
+        <details class="card" {% if not drafts %}open{% endif %}>
+            <summary style="cursor:pointer;list-style:none;font-weight:600;color:var(--zinc-100);font-size:13px;display:flex;justify-content:space-between;align-items:center;">
+                <span>+ New lecture</span>
+                <span class="field-hint">{{ current_name }}</span>
+            </summary>
+            {% if not api_key_set %}
+            <div class="banner banner-warn" style="margin: 12px 0 0;">
+                Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to enable generation.
+            </div>
+            {% endif %}
+            <form id="upload-form"
+                  data-course="{{ current_slug }}"
+                  data-suggested-number="{{ suggested_number }}"
+                  style="display:flex;flex-direction:column;gap:12px;margin-top:14px;">
+
+                <div class="field">
+                    <span class="field-label">Slides (PDF) <span class="field-pill">required</span></span>
+                    <label class="drop" data-drop="slides">
                         <input type="file" name="slides" accept="application/pdf" multiple required>
+                        <div class="drop-files" data-empty>Drop one or more PDFs · or click to choose</div>
                     </label>
-                    <label>Transcripts (.txt / .vtt / .srt) <span class="hint">match by filename</span>
+                </div>
+
+                <div class="field">
+                    <span class="field-label">Transcripts <span class="field-pill">required</span></span>
+                    <label class="drop" data-drop="transcript">
                         <input type="file" name="transcript" accept=".txt,.vtt,.srt,text/plain" multiple required>
+                        <div class="drop-files" data-empty>.txt / .vtt / .srt · matched to PDFs by filename</div>
                     </label>
-                    <div id="pair-preview" class="pair-preview hint"></div>
-                    <details class="single-overrides">
-                        <summary>Overrides (single-file mode)</summary>
-                        <p class="hint">Used only when exactly one PDF is selected. Multi-file uploads always auto-derive title/slug/number per pair.</p>
-                        <label>Title
-                            <input type="text" name="title" placeholder="e.g. Fetal Growth Abnormalities">
-                        </label>
-                        <div class="row">
-                            <label class="narrow">#
-                                <input type="number" name="number" min="1" value="{{ suggested_number }}">
-                            </label>
-                            <label class="wide">slug
-                                <input type="text" name="slug" placeholder="fetal-growth-abnormalities">
-                            </label>
+                </div>
+
+                <div id="pair-preview" class="pair-preview"></div>
+
+                <details class="single-overrides">
+                    <summary>Single-file overrides ▾</summary>
+                    <div class="field">
+                        <span class="field-label">Title</span>
+                        <input class="input" type="text" name="title" placeholder="e.g. Fetal Growth Abnormalities">
+                    </div>
+                    <div class="row" style="margin-top:8px;">
+                        <div class="field narrow">
+                            <span class="field-label">#</span>
+                            <input class="input" type="number" name="number" min="1" value="{{ suggested_number }}">
                         </div>
-                    </details>
-                    <button type="submit" {% if not api_key_set %}disabled{% endif %}>Generate notes</button>
-                </form>
+                        <div class="field wide">
+                            <span class="field-label">Slug</span>
+                            <input class="input" type="text" name="slug" placeholder="fetal-growth-abnormalities">
+                        </div>
+                    </div>
+                    <p class="field-hint" style="margin-top:6px;">
+                        Used only for one-PDF uploads. With multiple PDFs the title and slug are derived per file.
+                    </p>
+                </details>
+
+                <button type="submit" class="btn btn-primary btn-block" {% if not api_key_set %}disabled{% endif %}>
+                    Generate notes
+                </button>
                 <div id="upload-status"></div>
-            </details>
-        </div>
-
-        {% if drafts %}
-        <div class="sidebar-section">
-            <h3>Drafts pending review</h3>
-            <ul class="draft-list">
-                {% for d in drafts %}
-                <li>
-                    <a href="{{ url_for('draft_view', course_slug=current_slug, draft_slug=d.slug) }}">
-                        <strong>{{ "%02d"|format(d.number) }}</strong> {{ d.title }}
-                    </a>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
+            </form>
+        </details>
         {% endif %}
 
-        {% if published %}
-        <div class="sidebar-section">
-            <h3>Published lectures</h3>
-            <ul class="lecture-list">
-                {% for c in published %}
-                <li>
-                    <a href="#{{ c.slug }}" class="lecture-link">
-                        <strong>{{ "%02d"|format(c.number) }}</strong> {{ c.title }}
-                    </a>
-                    <form method="post"
-                          action="{{ url_for('delete_lecture', course_slug=current_slug, lecture_slug=c.slug) }}"
-                          onsubmit="return confirm('Delete lecture {{ '%02d'|format(c.number) }} — {{ c.title|e }}? This removes the .md file, rendered images, and uploaded source.');">
-                        <button type="submit" class="delete-x" title="Delete lecture">×</button>
-                    </form>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
+        {% include "_library.html" %}
 
-        <div class="sidebar-section">
-            <a class="master-link" href="{{ url_for('master_view', course_slug=current_slug) }}">
-                Master document {% if not master_exists %}<span class="hint">(not built yet)</span>{% endif %}
+        {% if current_slug %}
+        <div class="meta-links">
+            <a href="{{ url_for('master_view', course_slug=current_slug) }}" class="is-strong">
+                ▦ Master document {% if not master_exists %}<span class="field-hint">(not built yet)</span>{% endif %}
             </a>
-            <a class="pdf-link" href="{{ url_for('topic_pdf', topic_slug=current_slug) }}">
-                ⬇ Download course PDF
-            </a>
-            <a class="pdf-link" href="{{ url_for('master_pdf', course_slug=current_slug) }}">
-                ⬇ Download master PDF
-            </a>
-            <p class="hint">PDF takes 10–60s to render; tab will hang briefly.</p>
-        </div>
-
-        <div class="sidebar-section">
-            <a class="tuner-link" href="{{ url_for('prompt_tuner_view', course_slug=current_slug) }}">
-                ✎ Tune prompt for this course
-            </a>
-            <p class="hint">Chat with Claude to refine how notes are written for {{ current_name }}.</p>
+            <a href="{{ url_for('topic_pdf', topic_slug=current_slug) }}">⬇ Course PDF</a>
+            <a href="{{ url_for('master_pdf', course_slug=current_slug) }}">⬇ Master PDF</a>
+            <a href="{{ url_for('prompt_tuner_view', course_slug=current_slug) }}">✎ Tune prompt for this course</a>
+            <div class="sub">PDFs take 10–60s to render.</div>
         </div>
         {% endif %}
 
@@ -148,6 +95,7 @@
         </nav>
         {% endif %}
     </aside>
+
     <main class="main-content">
         <article class="markdown-content">
             {{ content | safe }}
@@ -167,7 +115,52 @@
         return name.replace(/\.[^.]+$/, '').toLowerCase()
                    .replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
+    function fmtSize(bytes) { return (bytes / 1024 / 1024).toFixed(2) + ' MB'; }
+    function escapeHtml(s) {
+        return (s || '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
 
+    // -------- File drop styling --------
+    document.querySelectorAll('.drop').forEach(zone => {
+        const input = zone.querySelector('input[type="file"]');
+        const filesEl = zone.querySelector('.drop-files');
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('is-hover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('is-hover'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault(); zone.classList.remove('is-hover');
+            if (e.dataTransfer.files.length) {
+                // Append rather than replace, so user can drag multiple times.
+                const dt = new DataTransfer();
+                for (const f of input.files) dt.items.add(f);
+                for (const f of e.dataTransfer.files) dt.items.add(f);
+                input.files = dt.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+        input.addEventListener('change', () => {
+            const files = Array.from(input.files);
+            if (files.length === 0) {
+                zone.classList.remove('has-file');
+                filesEl.innerHTML = filesEl.dataset.empty || filesEl.getAttribute('data-empty') || '';
+                return;
+            }
+            zone.classList.add('has-file');
+            const lines = files.map(f =>
+                `<span>✓ ${escapeHtml(f.name)} <span style="color:var(--text-muted)">(${fmtSize(f.size)})</span></span>`
+            ).join('');
+            filesEl.innerHTML = lines + `<button type="button" class="drop-clear">clear</button>`;
+            filesEl.querySelector('.drop-clear').addEventListener('click', e => {
+                e.preventDefault(); e.stopPropagation();
+                input.value = ''; input.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+        // Cache the empty placeholder text once so .clear works.
+        filesEl.dataset.empty = filesEl.innerHTML;
+    });
+
+    // -------- PDF/transcript pairing --------
     function pairFiles(pdfs, transcripts) {
         const tIndex = new Map();
         for (const t of transcripts) tIndex.set(stem(t.name), t);
@@ -180,12 +173,7 @@
         }
         const usedTranscripts = new Set(matched.map(m => m.transcript.name));
         const orphanTranscripts = Array.from(transcripts)
-            .filter(t => !usedTranscripts.has(t.name))
-            .map(t => t.name);
-        // Fallback: if stems matched zero pairs, but PDF and transcript counts
-        // are equal, propose pairing by sorted-alphabetical order (the common
-        // case where filenames don't share stems but the user uploaded them
-        // in matching order).
+            .filter(t => !usedTranscripts.has(t.name)).map(t => t.name);
         let fallbackByOrder = null;
         if (matched.length === 0 && pdfs.length === transcripts.length && pdfs.length > 0) {
             const sortedPdfs = [...pdfs].sort((a, b) => a.name.localeCompare(b.name));
@@ -198,41 +186,35 @@
     function renderPairPreview() {
         const pdfs = Array.from(form.slides.files);
         const transcripts = Array.from(form.transcript.files);
-        if (!pdfs.length && !transcripts.length) {
-            previewEl.innerHTML = '';
-            return;
-        }
-        const { matched, unpaired, orphanTranscripts, fallbackByOrder } =
-            pairFiles(pdfs, transcripts);
+        if (!pdfs.length && !transcripts.length) { previewEl.innerHTML = ''; return; }
+        const { matched, unpaired, orphanTranscripts, fallbackByOrder } = pairFiles(pdfs, transcripts);
         let html = '';
         if (matched.length) {
-            html += `<strong>${matched.length} lecture${matched.length === 1 ? '' : 's'} ready (matched by filename):</strong>`;
+            html += `<strong style="color:var(--emerald-300)">${matched.length} lecture${matched.length === 1 ? '' : 's'} ready (matched by filename):</strong>`;
             html += '<ul class="pair-list">';
             for (const m of matched) {
-                html += `<li><span class="pair-pdf">${m.pdf.name}</span> ↔ <span class="pair-tx">${m.transcript.name}</span></li>`;
+                html += `<li><span class="pair-pdf">${escapeHtml(m.pdf.name)}</span> ↔ <span class="pair-tx">${escapeHtml(m.transcript.name)}</span></li>`;
             }
             html += '</ul>';
         } else if (fallbackByOrder) {
-            html += `<strong>Filenames don't share stems, but counts match. Will pair in sorted order:</strong>`;
+            html += `<strong style="color:var(--amber-400)">Filenames don't share stems. Will pair in sorted order on submit:</strong>`;
             html += '<ul class="pair-list">';
             for (const m of fallbackByOrder) {
-                html += `<li><span class="pair-pdf">${m.pdf.name}</span> ↔ <span class="pair-tx">${m.transcript.name}</span></li>`;
+                html += `<li><span class="pair-pdf">${escapeHtml(m.pdf.name)}</span> ↔ <span class="pair-tx">${escapeHtml(m.transcript.name)}</span></li>`;
             }
             html += '</ul>';
-            html += '<div class="hint">Confirm on submit. To force a different pairing, rename files to share stems.</div>';
         }
         if (unpaired.length) {
-            html += `<div class="warn">PDFs without a matching transcript: ${unpaired.join(', ')}</div>`;
+            html += `<div class="warn">PDFs without a matching transcript: ${escapeHtml(unpaired.join(', '))}</div>`;
         }
         if (orphanTranscripts.length) {
-            html += `<div class="warn">Transcripts without a matching PDF: ${orphanTranscripts.join(', ')}</div>`;
+            html += `<div class="warn">Transcripts without a matching PDF: ${escapeHtml(orphanTranscripts.join(', '))}</div>`;
         }
         previewEl.innerHTML = html;
     }
 
     form.slides.addEventListener('change', () => {
         renderPairPreview();
-        // Single-PDF: auto-fill title/slug overrides if untouched.
         if (form.slides.files.length === 1) {
             const file = form.slides.files[0];
             const s = file.name.replace(/\.pdf$/i, '').replace(/[_]+/g, ' ').trim();
@@ -242,10 +224,7 @@
                     .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
             }
         } else {
-            // Multi-PDF: blank the override fields so the server auto-derives per pair.
-            form.title.value = '';
-            form.slug.value = '';
-            form.number.value = '';
+            form.title.value = ''; form.slug.value = ''; form.number.value = '';
         }
     });
     form.transcript.addEventListener('change', renderPairPreview);
@@ -253,7 +232,7 @@
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn.disabled) return;  // already in flight; ignore double-clicks
+        if (submitBtn.disabled) return;
         const pdfs = Array.from(form.slides.files);
         const transcripts = Array.from(form.transcript.files);
         if (!pdfs.length || !transcripts.length) {
@@ -262,14 +241,11 @@
         }
         let { matched, unpaired, fallbackByOrder } = pairFiles(pdfs, transcripts);
         if (!matched.length && fallbackByOrder) {
-            const summary = fallbackByOrder
-                .map(m => `  ${m.pdf.name}  ↔  ${m.transcript.name}`).join('\n');
-            const ok = confirm(
+            const summary = fallbackByOrder.map(m => `  ${m.pdf.name}  ↔  ${m.transcript.name}`).join('\n');
+            if (!confirm(
                 "Filenames don't share stems. Pair in sorted alphabetical order?\n\n"
-                + summary
-                + "\n\nClick OK to proceed with this pairing."
-            );
-            if (!ok) return;
+                + summary + "\n\nClick OK to proceed with this pairing."
+            )) return;
             matched = fallbackByOrder;
         }
         if (!matched.length) {
@@ -277,11 +253,10 @@
             return;
         }
         if (unpaired.length) {
-            const ok = confirm(
-                `${unpaired.length} PDF(s) won't be uploaded (no matching transcript): \n` +
+            if (!confirm(
+                `${unpaired.length} PDF(s) won't be uploaded (no matching transcript):\n` +
                 unpaired.join('\n') + '\n\nProceed with the ' + matched.length + ' that paired?'
-            );
-            if (!ok) return;
+            )) return;
         }
         statusEl.innerHTML = '';
         const overrides = matched.length === 1 ? {
@@ -290,23 +265,20 @@
             number: form.number.value.trim(),
         } : { title: '', slug: '', number: '' };
 
-        // Disable the button while requests are in flight to prevent the
-        // accidental-double-submit case that spawns duplicate jobs for the
-        // same slug.
         submitBtn.disabled = true;
         const originalLabel = submitBtn.textContent;
-        submitBtn.textContent = 'Uploading…';
+        submitBtn.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 700ms linear infinite;margin-right:6px;"></span>Uploading…';
         try {
-            statusEl.innerHTML = '';
-            // Fire all uploads concurrently so the per-course number lock
-            // assigns sequential numbers as each request enters its critical
-            // section.
             await Promise.all(matched.map(m => uploadOne(m, overrides)));
-            // Leave a brief acknowledgment; floating panel takes over.
             statusEl.insertAdjacentHTML('afterbegin',
                 `<div class="ok">${matched.length} upload${matched.length === 1 ? '' : 's'} queued — track them in the panel at the bottom-right.</div>`);
             form.reset();
             previewEl.innerHTML = '';
+            document.querySelectorAll('.drop').forEach(z => {
+                z.classList.remove('has-file');
+                const f = z.querySelector('.drop-files');
+                f.innerHTML = f.dataset.empty || '';
+            });
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = originalLabel;
@@ -325,26 +297,18 @@
             const data = await res.json();
             if (!res.ok) {
                 appendUploadError(`${pair.pdf.name}: ${data.error || 'upload failed'}`);
-                return;
             }
-            // Track happens in the floating panel (polls /jobs/active).
         } catch (err) {
             appendUploadError(`${pair.pdf.name}: ${err}`);
         }
     }
-
     function appendUploadError(msg) {
         const div = document.createElement('div');
         div.className = 'upload-error';
         div.textContent = msg;
         statusEl.appendChild(div);
     }
-
-    function escapeHtml(s) {
-        return (s || '').replace(/[&<>"']/g, c => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        })[c]);
-    }
 })();
 </script>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 {% endblock %}

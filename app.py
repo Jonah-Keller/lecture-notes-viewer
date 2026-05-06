@@ -4,7 +4,6 @@ import shutil
 import tempfile
 import threading
 import xml.etree.ElementTree as etree
-from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
@@ -128,6 +127,22 @@ class CalloutExtension(Extension):
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB upload cap
+
+
+def build_library(current_slug: Optional[str] = None) -> list[dict]:
+    """Return every course with its drafts and published lectures, ready for
+    the sidebar. Used by every view so the library is consistent across pages.
+    Cheap: one stat per .md file."""
+    out = []
+    for t in list_topics():
+        out.append({
+            "slug": t["slug"],
+            "name": t["name"],
+            "drafts": _list_drafts(t["slug"]),
+            "published": _list_published(t["slug"]),
+            "is_current": (t["slug"] == current_slug),
+        })
+    return out
 
 
 def list_topics():
@@ -275,11 +290,13 @@ def index():
         return render_template(
             "topic.html",
             topics=[],
+            library=[],
             current_slug=None,
             current_name=None,
             content="<p>No topics found in <code>content/</code>.</p>",
             anchors=[],
             drafts=[],
+            published=[],
             master_exists=False,
             api_key_set=_api_key_set(),
             suggested_number=1,
@@ -300,6 +317,7 @@ def topic_view(topic_slug):
     return render_template(
         "topic.html",
         topics=topics,
+        library=build_library(topic_slug),
         current_slug=topic_slug,
         current_name=current["name"],
         content=content,
@@ -330,11 +348,22 @@ def _api_key_set() -> bool:
 # Per-course lock prevents two simultaneous uploads from claiming the same
 # lecture number. The critical section: pick number -> reserve a placeholder
 # draft file -> release. After that, even slow background work can't collide.
-_NUMBER_LOCKS: dict[str, threading.Lock] = defaultdict(threading.Lock)
+#
+# defaultdict here was racy: its default_factory call isn't atomic, so two
+# threads racing on a missing key could each instantiate a separate Lock and
+# enter the "critical" section in parallel. We guard insertion with a meta-lock
+# so all threads see the same Lock instance per course.
+_NUMBER_LOCKS_MUTEX = threading.Lock()
+_NUMBER_LOCKS: dict[str, threading.Lock] = {}
 
 
 def _course_number_lock(course: str) -> threading.Lock:
-    return _NUMBER_LOCKS[course]
+    with _NUMBER_LOCKS_MUTEX:
+        lock = _NUMBER_LOCKS.get(course)
+        if lock is None:
+            lock = threading.Lock()
+            _NUMBER_LOCKS[course] = lock
+        return lock
 
 
 def _save_upload(file_storage, dest: Path) -> None:
@@ -501,6 +530,7 @@ def draft_view(course_slug, draft_slug):
     return render_template(
         "draft.html",
         topics=topics,
+        library=build_library(course_slug),
         current_slug=course_slug,
         current_name=(current or {}).get("name", course_slug),
         content=content,
@@ -612,6 +642,7 @@ def master_view(course_slug):
     return render_template(
         "master.html",
         topics=topics,
+        library=build_library(course_slug),
         current_slug=course_slug,
         current_name=(current or {}).get("name", course_slug),
         content=content,
@@ -651,6 +682,7 @@ def prompt_tuner_view(course_slug):
     return render_template(
         "prompt_tuner.html",
         topics=topics,
+        library=build_library(course_slug),
         current_slug=course_slug,
         current_name=(current or {}).get("name", course_slug),
         addendum=addendum,
