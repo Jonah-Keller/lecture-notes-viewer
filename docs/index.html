@@ -4,6 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lecture Notes Viewer</title>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PASTE THE TWO GOOGLE DRIVE LINKS HERE. Both buttons below read from
+     these; nothing else needs changing.
+     Build the packs with:
+       python3 make_library_pack.py brain-and-behavior endocrinology:3,4 \
+           gastroenterology:9,10 --out ~/Downloads/psom-sampler.zip
+       python3 make_library_pack.py --out ~/Downloads/psom-library.zip
+     ═══════════════════════════════════════════════════════════════════ -->
+<script>
+  window.PACKS = {
+    sampler: "PASTE_SAMPLER_DRIVE_LINK_HERE",
+    full:    "PASTE_FULL_LIBRARY_DRIVE_LINK_HERE",
+  };
+</script>
 <style>
   :root {
     --bg: #fafaf9; --fg: #1c1917; --muted: #57534e; --line: #e7e5e4;
@@ -109,15 +123,28 @@
   </div>
 
   <div class="card">
-    <h3>The library pack</h3>
+    <h3>A library pack</h3>
     <p>
-      A single <code>.zip</code> holding the courses that are already written up —
-      the notes and every slide image. Download it from the link you were sent,
-      then load it on the Setup screen. That's a straight copy onto your machine:
-      nothing regenerates, no API credit is spent, and you can read all of it
-      without a key at all.
+      A single <code>.zip</code> of courses that are already written up — the
+      notes and every slide image. Load it on the Setup screen and it copies
+      straight onto your machine: nothing regenerates, no API credit is spent,
+      and you can read all of it <strong>without a key at all</strong>.
     </p>
+    <p style="margin-top:12px;">
+      Start with the samples if you just want to see what the notes look like.
+    </p>
+    <p id="pack-links" style="margin-top:14px;"></p>
   </div>
+
+  <h2>See what the notes look like</h2>
+  <p>
+    The sample pack is seven lectures — the three spinal cord lectures from Brain
+    and Behavior, pituitary physiology followed by pituitary pathophysiology, and
+    gastric motility followed by its pharmacology. They're deliberately
+    consecutive pairs, because the thing worth judging is how the second lecture
+    of a pair refers back to the first instead of re-explaining it.
+  </p>
+  <p id="sampler-cta"></p>
 
   <h2>Then what</h2>
   <p>
@@ -142,5 +169,24 @@
   </footer>
 
 </div>
+
+<script>
+(function () {
+  const P = window.PACKS || {};
+  const ready = (u) => u && !u.startsWith("PASTE_");
+  const btn = (u, t) => `<a class="btn" href="${u}" style="font-size:15px;padding:12px 22px;">${t}</a>`;
+
+  const links = document.getElementById("pack-links");
+  const parts = [];
+  if (ready(P.sampler)) parts.push(btn(P.sampler, "Sample lectures · 39 MB"));
+  if (ready(P.full)) parts.push(btn(P.full, "Full library · 709 MB"));
+  links.innerHTML = parts.length
+    ? parts.join(" &nbsp; ")
+    : "<em>Use the download links you were sent.</em>";
+
+  const cta = document.getElementById("sampler-cta");
+  if (ready(P.sampler)) cta.innerHTML = btn(P.sampler, "Download the sample lectures · 39 MB");
+})();
+</script>
 </body>
 </html>

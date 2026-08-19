@@ -46,6 +46,10 @@ auto-detects a pack sitting in `~/Downloads`). It's a straight copy onto your
 machine: nothing regenerates, no API credit is spent, and reading it doesn't
 need a key at all.
 
+Two packs are published: a ~39 MB sample of seven lectures for anyone who just
+wants to see what the notes look like, and the full library. Load the sample
+first — the full one is 709 MB.
+
 ## Day-to-day use
 
 - Double-click the Desktop launcher.
@@ -61,7 +65,16 @@ need a key at all.
 python3 make_library_pack.py                             # every course
 python3 make_library_pack.py endocrinology reproduction  # just these
 python3 make_library_pack.py --out ~/Desktop/pack.zip
+
+# a course can be narrowed to specific lectures by their leading number —
+# this is the published sample pack:
+python3 make_library_pack.py brain-and-behavior endocrinology:3,4 \
+    gastroenterology:9,10 --out ~/Downloads/psom-sampler.zip
 ```
+
+A narrowed course ships a rewritten `meta.yaml` naming only the lectures that
+are in it, and only the images those lectures reference — otherwise the sidebar
+points at files that aren't there.
 
 Writes to `~/Downloads/psom-library.zip` by default. Notes, `meta.yaml` and slide
 images go in; `_uploads` (the source PDFs and transcripts), `_drafts` and `_jobs`
