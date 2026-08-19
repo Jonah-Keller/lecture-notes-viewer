@@ -346,6 +346,42 @@ a { color: inherit; text-decoration: none; }
 .lib-item .lib-delete:hover { background: rgba(239, 68, 68, 0.15); color: var(--red-400); }
 .lib-item .lib-delete form { display: contents; }
 
+/* Drag handle on the current course's lectures */
+.lib-item .lib-drag {
+    position: absolute;
+    left: -14px; top: 7px;
+    width: 12px; height: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--zinc-700);
+    font-size: 10px; line-height: 1;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 100ms, color 100ms;
+    user-select: none;
+}
+.lib-course.is-current .lib-item:hover .lib-drag { opacity: 1; }
+.lib-item .lib-drag:hover { color: var(--zinc-400); }
+.lib-item.is-dragging { opacity: 0.4; }
+.lib-item.is-drop-target-above { box-shadow: inset 0 2px 0 0 var(--emerald-400); }
+.lib-item.is-drop-target-below { box-shadow: inset 0 -2px 0 0 var(--emerald-400); }
+
+/* Inline-edit title input — matches the lib-title text styling */
+.lib-item .lib-title[contenteditable="true"] {
+    outline: none;
+    background: var(--zinc-900);
+    border: 1px solid var(--emerald-400);
+    border-radius: 3px;
+    padding: 1px 4px;
+    margin: -1px -4px;
+    white-space: normal;
+    overflow: visible;
+    cursor: text;
+}
+.lib-item .lib-title[data-editable-title]:hover {
+    text-decoration: underline dotted var(--zinc-600);
+    text-underline-offset: 3px;
+}
+
 .lib-empty {
     padding: 8px 10px;
     color: var(--text-muted); font-size: 11.5px;

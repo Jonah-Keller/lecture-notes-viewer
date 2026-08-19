@@ -607,6 +607,112 @@ def delete_lecture(course_slug, lecture_slug):
     return redirect(url_for("topic_view", topic_slug=course_slug))
 
 
+@app.route("/lecture/<course_slug>/<lecture_slug>/rename", methods=["POST"])
+def rename_lecture(course_slug, lecture_slug):
+    """Rewrite the first H1 in the lecture's .md file. The filename / slug /
+    number stay the same — only the displayed title changes."""
+    course_dir = CONTENT_DIR / course_slug
+    if not course_dir.is_dir():
+        abort(404)
+    candidates = sorted(course_dir.glob(f"*-{lecture_slug}.md"))
+    if not candidates:
+        abort(404)
+    md = candidates[-1]
+
+    data = request.get_json(silent=True) or {}
+    new_title = (data.get("title") or "").strip()
+    if not new_title:
+        return jsonify({"error": "Title required."}), 400
+    if len(new_title) > 300:
+        return jsonify({"error": "Title too long."}), 400
+
+    source = md.read_text(encoding="utf-8")
+    lines = source.split("\n")
+    rewrote = False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("# "):
+            lines[i] = f"# {new_title}"
+            rewrote = True
+            break
+    if not rewrote:
+        lines.insert(0, f"# {new_title}")
+        lines.insert(1, "")
+    md.write_text("\n".join(lines), encoding="utf-8")
+
+    build_master_async(course_slug)
+    return jsonify({"ok": True, "slug": lecture_slug, "title": new_title})
+
+
+@app.route("/course/<course_slug>/reorder", methods=["POST"])
+def reorder_lectures(course_slug):
+    """Renumber published lectures by an explicit slug order. Slugs not in the
+    incoming order are appended at the end in their existing relative order.
+
+    Renaming is two-phase: first stage every file to a temp name, then rename
+    temp -> final. That avoids collisions when two lectures swap positions
+    (a -> b while b -> a)."""
+    course_dir = CONTENT_DIR / course_slug
+    if not course_dir.is_dir():
+        abort(404)
+
+    data = request.get_json(silent=True) or {}
+    order = data.get("order")
+    if not isinstance(order, list) or not all(isinstance(s, str) for s in order):
+        return jsonify({"error": "Body must be { order: [slug, ...] }."}), 400
+
+    current = _list_published(course_slug)  # already sorted by number
+    by_slug = {c["slug"]: c for c in current}
+    final_order: list[dict] = []
+    seen = set()
+    for slug in order:
+        if slug in by_slug and slug not in seen:
+            final_order.append(by_slug[slug])
+            seen.add(slug)
+    # Append anything the client didn't mention (defensive — keeps stale files
+    # from getting dropped).
+    for c in current:
+        if c["slug"] not in seen:
+            final_order.append(c)
+
+    with _course_number_lock(course_slug):
+        # Phase 1: stage to temp names so swaps don't collide.
+        staged: list[tuple[Path, Path]] = []  # (temp, final)
+        for new_number, c in enumerate(final_order, start=1):
+            src = course_dir / c["filename"]
+            if not src.is_file():
+                continue
+            final_name = f"{new_number:02d}-{c['slug']}.md"
+            if src.name == final_name:
+                continue  # already correct, skip
+            tmp = course_dir / f".reorder-{new_number:02d}-{c['slug']}.md"
+            src.rename(tmp)
+            staged.append((tmp, course_dir / final_name))
+        # Phase 2: temp -> final.
+        for tmp, final in staged:
+            tmp.rename(final)
+
+        # Rewrite meta.yaml chapters in the new order.
+        meta_path = course_dir / "meta.yaml"
+        data_yaml = {}
+        if meta_path.is_file():
+            data_yaml = yaml.safe_load(meta_path.read_text()) or {}
+        if "name" not in data_yaml:
+            data_yaml["name"] = course_slug.replace("-", " ").title()
+        data_yaml["chapters"] = [
+            f"{i:02d}-{c['slug']}.md" for i, c in enumerate(final_order, start=1)
+        ]
+        meta_path.write_text(yaml.safe_dump(data_yaml, sort_keys=False), encoding="utf-8")
+
+    build_master_async(course_slug)
+    return jsonify({
+        "ok": True,
+        "order": [
+            {"slug": c["slug"], "number": i, "title": c["title"]}
+            for i, c in enumerate(final_order, start=1)
+        ],
+    })
+
+
 @app.route("/discard/<course_slug>/<draft_slug>", methods=["POST"])
 def discard_draft(course_slug, draft_slug):
     drafts_dir = CONTENT_DIR / course_slug / DRAFTS_SUBDIR

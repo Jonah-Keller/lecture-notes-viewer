@@ -47,15 +47,19 @@
 
             {% for c in course.published %}
             {% set is_active = (course.is_current and active_lecture_slug is defined and active_lecture_slug == c.slug) %}
-            <li class="lib-item {% if is_active %}is-active{% endif %}">
+            <li class="lib-item {% if is_active %}is-active{% endif %}"
+                data-lecture-slug="{{ c.slug }}"
+                {% if course.is_current %}draggable="true"{% endif %}>
                 {% if course.is_current %}
+                <span class="lib-drag" title="Drag to reorder">⋮⋮</span>
                 <a href="#{{ c.slug }}" data-lib-anchor="{{ c.slug }}">
                 {% else %}
                 <a href="{{ url_for('topic_view', topic_slug=course.slug) }}#{{ c.slug }}">
                 {% endif %}
                     <span class="lib-num">{{ "%02d"|format(c.number) }}</span>
                     <span class="lib-body">
-                        <span class="lib-title">{{ c.title }}</span>
+                        <span class="lib-title"
+                              {% if course.is_current %}data-editable-title="1" title="Click to edit title"{% endif %}>{{ c.title }}</span>
                     </span>
                 </a>
                 {% if course.is_current %}
@@ -173,5 +177,164 @@
                 .replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-');
         });
     }
+
+    // ---- Drag-and-drop reorder + inline-edit title ----
+    // Only the current course's published lectures are draggable/editable.
+    // Drafts are excluded (they don't have a stable order yet) and other
+    // courses are read-only until you navigate into them.
+    const currentCourse = tree.querySelector('.lib-course.is-current');
+    if (!currentCourse) return;
+    const courseSlug = currentCourse.dataset.courseSlug;
+    const list = currentCourse.querySelector('.lib-list');
+
+    // ---- Renumber the visible .lib-num spans to match DOM order. ----
+    // Skips draft rows (they don't carry data-lecture-slug). Used after a
+    // successful drop so the UI matches what the server just wrote.
+    function renumberDom() {
+        let n = 1;
+        list.querySelectorAll(':scope > .lib-item[data-lecture-slug]').forEach(li => {
+            const num = li.querySelector('.lib-num');
+            if (num) num.textContent = String(n).padStart(2, '0');
+            n++;
+        });
+    }
+
+    // ---- Drag-and-drop ----
+    let dragEl = null;
+
+    list.addEventListener('dragstart', (e) => {
+        const li = e.target.closest('.lib-item[data-lecture-slug]');
+        if (!li || !li.draggable) return;
+        dragEl = li;
+        li.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        // Some browsers won't fire drop without data set.
+        try { e.dataTransfer.setData('text/plain', li.dataset.lectureSlug); } catch {}
+    });
+
+    function clearDropMarkers() {
+        list.querySelectorAll('.is-drop-target-above, .is-drop-target-below').forEach(el => {
+            el.classList.remove('is-drop-target-above', 'is-drop-target-below');
+        });
+    }
+
+    list.addEventListener('dragover', (e) => {
+        if (!dragEl) return;
+        const li = e.target.closest('.lib-item[data-lecture-slug]');
+        if (!li || li === dragEl) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = li.getBoundingClientRect();
+        const before = (e.clientY - rect.top) < rect.height / 2;
+        clearDropMarkers();
+        li.classList.add(before ? 'is-drop-target-above' : 'is-drop-target-below');
+    });
+
+    list.addEventListener('dragleave', (e) => {
+        // Only clear if we left the list itself, not a child.
+        if (!list.contains(e.relatedTarget)) clearDropMarkers();
+    });
+
+    list.addEventListener('drop', async (e) => {
+        if (!dragEl) return;
+        e.preventDefault();
+        const li = e.target.closest('.lib-item[data-lecture-slug]');
+        clearDropMarkers();
+        if (!li || li === dragEl) {
+            dragEl.classList.remove('is-dragging');
+            dragEl = null;
+            return;
+        }
+        const rect = li.getBoundingClientRect();
+        const before = (e.clientY - rect.top) < rect.height / 2;
+        const moved = dragEl;
+        // Snapshot order in case the server rejects and we need to revert.
+        const prevOrder = Array.from(list.querySelectorAll(':scope > .lib-item[data-lecture-slug]'));
+
+        if (before) li.before(moved); else li.after(moved);
+        moved.classList.remove('is-dragging');
+        dragEl = null;
+        renumberDom();
+
+        const order = Array.from(list.querySelectorAll(':scope > .lib-item[data-lecture-slug]'))
+            .map(el => el.dataset.lectureSlug);
+        try {
+            const r = await fetch(`/course/${encodeURIComponent(courseSlug)}/reorder`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order }),
+            });
+            if (!r.ok) throw new Error(await r.text());
+        } catch (err) {
+            // Revert DOM on failure.
+            prevOrder.forEach(el => list.appendChild(el));
+            renumberDom();
+            alert('Reorder failed: ' + (err && err.message ? err.message : err));
+        }
+    });
+
+    list.addEventListener('dragend', () => {
+        if (dragEl) dragEl.classList.remove('is-dragging');
+        dragEl = null;
+        clearDropMarkers();
+    });
+
+    // ---- Inline title edit ----
+    // Click the title to make it contenteditable. Enter or blur saves;
+    // Escape reverts. The whole row's <a> would normally swallow the click
+    // and navigate to the anchor, so we stopPropagation + preventDefault
+    // when starting an edit.
+    list.addEventListener('click', (e) => {
+        const titleEl = e.target.closest('[data-editable-title]');
+        if (!titleEl) return;
+        if (titleEl.isContentEditable) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const li = titleEl.closest('.lib-item[data-lecture-slug]');
+        if (!li) return;
+        const slug = li.dataset.lectureSlug;
+        const original = titleEl.textContent;
+        titleEl.setAttribute('contenteditable', 'true');
+        titleEl.focus();
+        // Select all text on entry.
+        const range = document.createRange();
+        range.selectNodeContents(titleEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        let committed = false;
+        const finish = async (save) => {
+            if (committed) return;
+            committed = true;
+            titleEl.removeAttribute('contenteditable');
+            const next = titleEl.textContent.trim();
+            if (!save || !next || next === original) {
+                titleEl.textContent = original;
+                return;
+            }
+            titleEl.textContent = next;
+            try {
+                const r = await fetch(
+                    `/lecture/${encodeURIComponent(courseSlug)}/${encodeURIComponent(slug)}/rename`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: next }),
+                    },
+                );
+                if (!r.ok) throw new Error(await r.text());
+            } catch (err) {
+                titleEl.textContent = original;
+                alert('Rename failed: ' + (err && err.message ? err.message : err));
+            }
+        };
+
+        titleEl.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') { ev.preventDefault(); finish(true); titleEl.blur(); }
+            else if (ev.key === 'Escape') { ev.preventDefault(); finish(false); titleEl.blur(); }
+        });
+        titleEl.addEventListener('blur', () => finish(true), { once: true });
+    });
 })();
 </script>
