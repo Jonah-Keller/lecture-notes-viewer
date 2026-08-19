@@ -4,10 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lecture Notes Viewer</title>
+
 <!-- ═══════════════════════════════════════════════════════════════════════
-     PASTE THE TWO GOOGLE DRIVE LINKS HERE. Both buttons below read from
-     these; nothing else needs changing.
-     Build the packs with:
+     THE ONLY THING THAT NEEDS EDITING: paste the two Google Drive links.
+     Every button on the page reads from here.
+
+     Rebuild the packs with:
        python3 make_library_pack.py brain-and-behavior endocrinology:3,4 \
            gastroenterology:9,10 --out ~/Downloads/psom-sampler.zip
        python3 make_library_pack.py --out ~/Downloads/psom-library.zip
@@ -18,154 +20,279 @@
     full:    "PASTE_FULL_LIBRARY_DRIVE_LINK_HERE",
   };
 </script>
+
 <style>
   :root {
-    --bg: #fafaf9; --fg: #1c1917; --muted: #57534e; --line: #e7e5e4;
-    --card: #ffffff; --accent: #7c3aed; --accent-fg: #ffffff; --code: #f5f5f4;
+    --bg:#fafaf9; --fg:#1c1917; --muted:#57534e; --line:#e7e5e4;
+    --card:#fff; --accent:#7c3aed; --accent-fg:#fff; --code:#f5f5f4;
+    --ok:#059669;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0c0a09; --fg: #fafaf9; --muted: #a8a29e; --line: #292524;
-      --card: #1c1917; --accent: #a78bfa; --accent-fg: #1c1917; --code: #292524;
+      --bg:#0c0a09; --fg:#fafaf9; --muted:#a8a29e; --line:#292524;
+      --card:#1c1917; --accent:#a78bfa; --accent-fg:#1c1917; --code:#292524;
+      --ok:#34d399;
     }
   }
-  * { box-sizing: border-box; }
+  * { box-sizing:border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
   }
-  .wrap { max-width: 680px; margin: 0 auto; padding: 64px 24px 96px; }
+  .wrap { max-width:720px; margin:0 auto; padding:56px 24px 96px; }
+  a { color:var(--accent); }
+
   .mark {
-    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent);
-    border-radius: 4px; padding: 3px 8px; margin-bottom: 20px;
+    display:inline-block; font-size:11px; font-weight:700; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--accent); border:1px solid var(--accent);
+    border-radius:4px; padding:3px 8px; margin-bottom:18px;
   }
-  h1 { font-size: 36px; line-height: 1.15; margin: 0 0 14px; letter-spacing: -.02em; }
-  .lede { font-size: 18px; color: var(--muted); margin: 0 0 36px; }
-  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em;
-       color: var(--muted); margin: 48px 0 14px; font-weight: 700; }
-  a { color: var(--accent); }
+  h1 { font-size:38px; line-height:1.12; margin:0 0 14px; letter-spacing:-.022em; }
+  .lede { font-size:18px; color:var(--muted); margin:0 0 20px; }
+
+  /* steps */
+  .step { display:flex; gap:18px; margin:44px 0 0; }
+  .num {
+    flex:0 0 34px; height:34px; border-radius:50%;
+    background:var(--accent); color:var(--accent-fg);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:16px; margin-top:2px;
+  }
+  .step-body { flex:1; min-width:0; }
+  .step h2 { font-size:21px; margin:2px 0 10px; letter-spacing:-.01em; }
+  .step p { margin:0 0 12px; }
+  .muted { color:var(--muted); }
+  .small { font-size:14.5px; }
+
   .btn {
-    display: inline-block; background: var(--accent); color: var(--accent-fg);
-    font-size: 17px; font-weight: 650; text-decoration: none;
-    padding: 15px 28px; border-radius: 10px;
+    display:inline-block; background:var(--accent); color:var(--accent-fg);
+    font-size:16px; font-weight:650; text-decoration:none;
+    padding:13px 24px; border-radius:10px; margin:4px 8px 4px 0;
   }
-  .btn:hover { opacity: .9; }
-  .btn-sub { display: block; margin-top: 10px; font-size: 14px; color: var(--muted); }
-  .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    padding: 20px 22px; margin: 16px 0;
+  .btn:hover { opacity:.9; }
+  .btn-quiet {
+    background:transparent; color:var(--accent);
+    border:1px solid var(--accent); font-weight:600;
   }
-  .card h3 { margin: 0 0 6px; font-size: 16px; }
-  .card p { margin: 0; color: var(--muted); font-size: 15px; }
-  code, pre {
-    background: var(--code); border-radius: 6px;
-    font: 13.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  .note {
+    border-left:3px solid var(--accent); background:var(--card);
+    padding:14px 18px; margin:16px 0; font-size:15px; border-radius:0 8px 8px 0;
   }
-  code { padding: 2px 6px; }
-  pre { padding: 14px 16px; overflow-x: auto; border: 1px solid var(--line); }
-  pre code { background: none; padding: 0; }
-  ol { padding-left: 22px; }
-  ol li { margin-bottom: 10px; }
-  .warn {
-    border-left: 3px solid var(--accent); background: var(--card);
-    padding: 14px 18px; margin: 20px 0; font-size: 15px;
+  pre, code {
+    background:var(--code); border-radius:6px;
+    font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
   }
-  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line);
-           color: var(--muted); font-size: 14px; }
+  code { padding:2px 6px; }
+  pre { padding:13px 15px; overflow-x:auto; border:1px solid var(--line); margin:12px 0; }
+  pre code { background:none; padding:0; }
+
+  details { border-top:1px solid var(--line); padding:14px 0; }
+  details summary { cursor:pointer; font-weight:600; list-style:none; }
+  details summary::-webkit-details-marker { display:none; }
+  details summary::before { content:"+ "; color:var(--accent); font-weight:700; }
+  details[open] summary::before { content:"– "; }
+  details .body { padding:10px 0 4px; color:var(--muted); font-size:15px; }
+  details .body p { margin:0 0 10px; }
+
+  hr { border:0; border-top:1px solid var(--line); margin:52px 0 0; }
+  h3.sec {
+    font-size:13px; text-transform:uppercase; letter-spacing:.09em;
+    color:var(--muted); margin:44px 0 4px; font-weight:700;
+  }
+  footer { margin-top:48px; padding-top:22px; border-top:1px solid var(--line);
+           color:var(--muted); font-size:14px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <span class="mark">PSOM</span>
-  <h1>Lecture Notes Viewer</h1>
+  <h1>Lecture notes, written for you</h1>
   <p class="lede">
-    Slides plus a transcript in, a properly written set of lecture notes out —
-    figures embedded, cross-referenced against everything covered earlier in the
-    course. Runs on your own Mac, on your own API key.
+    Hand it a lecture's slide PDF and the transcript. Get back a proper set of
+    notes with the slides embedded where they belong — and written knowing what
+    the earlier lectures in that course already covered, so it points back
+    instead of repeating itself.
+  </p>
+  <p class="muted small">
+    Runs on your own Mac. Reading the shared notes is free and needs no account.
+    Three steps, about five minutes.
   </p>
 
-  <a class="btn" href="Install%20Lecture%20Notes.command" download>Download the installer</a>
-  <span class="btn-sub">macOS · one file · takes about three minutes end to end</span>
+  <!-- ── 1 ─────────────────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="num">1</div>
+    <div class="step-body">
+      <h2>Install it</h2>
+      <p>Download this, then double-click it. It does the rest on its own.</p>
+      <a class="btn" href="Install%20Lecture%20Notes.command" download>Download the installer</a>
 
-  <div class="warn">
-    <strong>First double-click will be blocked.</strong> macOS refuses to run any
-    downloaded script the first time. <strong>Right-click</strong> (or Control-click)
-    the downloaded file → <strong>Open</strong> → <strong>Open</strong>. Once only.
-    <br><br>
-    Rather skip that? Paste this into Terminal instead — same installer, no warning:
-    <pre><code>curl -fsSL https://raw.githubusercontent.com/Jonah-Keller/lecture-notes-viewer/main/install.sh | bash</code></pre>
+      <div class="note">
+        <strong>macOS will block it the first time.</strong> That's expected — it
+        blocks every downloaded script. <strong>Right-click</strong> (or
+        Control-click) the file you just downloaded → <strong>Open</strong> →
+        <strong>Open</strong>. You only do this once.
+      </div>
+
+      <p class="small muted">
+        Rather not deal with that? Paste this into Terminal instead — identical
+        installer, no warning:
+      </p>
+      <pre><code>curl -fsSL https://raw.githubusercontent.com/Jonah-Keller/lecture-notes-viewer/main/install.sh | bash</code></pre>
+
+      <p class="small muted">
+        A Terminal window opens and narrates what it's doing: Apple's command
+        line tools if you don't have them (a system popup — click Install), then
+        the app, then a <strong>Launch Lecture Notes</strong> shortcut on your
+        Desktop. Your browser opens when it's ready. Every time after this, you
+        just double-click that Desktop shortcut.
+      </p>
+    </div>
   </div>
 
-  <h2>What happens after you run it</h2>
-  <ol>
-    <li>It installs Apple's command line tools if you don't already have them (a system popup — click Install).</li>
-    <li>It downloads the app and puts <strong>Launch Lecture Notes</strong> on your Desktop.</li>
-    <li>Your browser opens on the Setup page.</li>
-    <li>Paste an Anthropic API key, pick a model, load the shared lecture pack. Done.</li>
-  </ol>
-  <p>Every time after that, you just double-click the Desktop launcher.</p>
+  <!-- ── 2 ─────────────────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="num">2</div>
+    <div class="step-body">
+      <h2>Load the lectures</h2>
+      <p>
+        The app opens empty. The notes come as a <code>.zip</code> you download
+        once and load on the Setup screen — a straight copy onto your machine.
+        Nothing regenerates and nothing is charged.
+      </p>
 
-  <h2>The two things Setup asks for</h2>
+      <p id="pack-buttons"></p>
 
-  <div class="card">
-    <h3>An Anthropic API key</h3>
-    <p>
-      Create one at <a href="https://console.anthropic.com/settings/keys" target="_blank"
-      rel="noopener">console.anthropic.com/settings/keys</a> and put a few dollars of
-      credit on it. Generation is billed to your account, not anyone else's, and the
-      key is written to a file on your Mac — it never leaves it. The default model is
-      Sonnet, at roughly $0.25–0.60 per lecture; Haiku is a few cents if you want it
-      cheaper, Opus is there for a lecture that's mostly diagrams.
-    </p>
+      <p class="small muted">
+        Download one, then on the Setup screen hit <strong>Load</strong> — it
+        finds a pack sitting in your Downloads folder by itself. If you're just
+        having a look, take the samples; the full library is 676 MB.
+      </p>
+
+      <p class="small muted">
+        <strong>The seven samples</strong> are the three spinal cord lectures
+        from Brain and Behavior, pituitary physiology followed by pituitary
+        pathophysiology, and gastric motility followed by its pharmacology. The
+        pairs are the point — read the second of each and watch how it leans on
+        the first rather than starting over.
+      </p>
+
+      <p class="small muted">
+        <strong>The full library</strong> is Endocrine, GI, Reproduction and the
+        start of Brain and Behavior — around 100 lectures.
+      </p>
+
+      <p><strong>That's it if you only want to read.</strong> No key, no account,
+      no cost. Step 3 is only if you want to make your own.</p>
+    </div>
   </div>
 
-  <div class="card">
-    <h3>A library pack</h3>
-    <p>
-      A single <code>.zip</code> of courses that are already written up — the
-      notes and every slide image. Load it on the Setup screen and it copies
-      straight onto your machine: nothing regenerates, no API credit is spent,
-      and you can read all of it <strong>without a key at all</strong>.
-    </p>
-    <p style="margin-top:12px;">
-      Start with the samples if you just want to see what the notes look like.
-    </p>
-    <p id="pack-links" style="margin-top:14px;"></p>
+  <!-- ── 3 ─────────────────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="num">3</div>
+    <div class="step-body">
+      <h2>Optional — write up your own lectures</h2>
+      <p>
+        To generate notes you need an API key, because that part costs real
+        money and it should be your money, not someone else's.
+      </p>
+      <p>
+        Make one at
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a>,
+        put about $10 on it, paste it into the Setup screen. That's roughly
+        20–40 lectures on the default model, and there's a cheaper one in the
+        dropdown if you want to stretch it further. The key is written to a file
+        on your Mac and goes nowhere else.
+      </p>
+      <p>
+        Then: <strong>New lecture</strong> → drop in the slide PDF and the
+        transcript → it drafts in the background while you do something else.
+        Review, publish, export a PDF.
+      </p>
+    </div>
   </div>
 
-  <h2>See what the notes look like</h2>
-  <p>
-    The sample pack is seven lectures — the three spinal cord lectures from Brain
-    and Behavior, pituitary physiology followed by pituitary pathophysiology, and
-    gastric motility followed by its pharmacology. They're deliberately
-    consecutive pairs, because the thing worth judging is how the second lecture
-    of a pair refers back to the first instead of re-explaining it.
+  <hr>
+
+  <h3 class="sec">If something goes wrong</h3>
+
+  <details>
+    <summary>"cannot be opened because it is from an unidentified developer"</summary>
+    <div class="body">
+      <p>Normal, and the most common thing people hit. macOS refuses to run any
+      downloaded script on the first double-click.</p>
+      <p>Right-click (Control-click) the file → <strong>Open</strong> →
+      <strong>Open</strong>. If your Mac doesn't offer Open at all, go to System
+      Settings → Privacy &amp; Security, scroll to the bottom, and click
+      <strong>Open Anyway</strong>.</p>
+      <p>Or skip it entirely with the Terminal one-liner in step 1.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>"git: command not found"</summary>
+    <div class="body">
+      <p>Apple's command line tools aren't installed. In Terminal run
+      <code>xcode-select --install</code>, click Install in the popup, wait for
+      it to finish, then run the installer again.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Terminal window closed instantly</summary>
+    <div class="body">
+      <p>It's set to stay open and show the error. If it still vanishes, open
+      Terminal and run <code>~/lecture-notes-viewer/start.sh</code> directly —
+      whatever failed will be printed.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The browser didn't open, or the page won't load</summary>
+    <div class="body">
+      <p>Give it a minute on first run — it's building a Python environment and
+      downloading Chromium for PDF export. Then go to
+      <a href="http://localhost:8080">localhost:8080</a> yourself. If it says the
+      port is in use, quit whatever else is on 8080.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The "New lecture" button is greyed out</summary>
+    <div class="body">
+      <p>No API key yet — that's step 3, and it's only needed for generating.
+      Reading everything in the packs works without it.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Loading the pack seems stuck</summary>
+    <div class="body">
+      <p>The full library is 676 MB and unpacks thousands of slide images. A
+      minute or two is normal. Leave the tab open.</p>
+    </div>
+  </details>
+
+  <h3 class="sec">Worth knowing</h3>
+  <p class="small muted">
+    The slide images in these notes are our lecturers' material, so keep the
+    packs inside the class — don't repost them.
   </p>
-  <p id="sampler-cta"></p>
-
-  <h2>Then what</h2>
-  <p>
-    Read and search everything in the pack. To add a lecture of your own, hit
-    <strong>New lecture</strong>, drop in the slide PDF and the transcript, and
-    the notes are drafted in the background while you do something else. Review
-    the draft, publish it, export a PDF.
+  <p class="small muted">
+    The notes are model-generated. They're good and they're checked against the
+    transcript, but they are not a primary source. Verify anything before you
+    commit it to memory.
   </p>
-
-  <h2>If something goes wrong</h2>
-  <p>
-    Almost everything is one of three things: the Gatekeeper warning above,
-    a missing Xcode command line tools install (<code>xcode-select --install</code>),
-    or something else already sitting on port 8080. The
-    <a href="https://github.com/Jonah-Keller/lecture-notes-viewer#troubleshooting">README</a>
-    has the rest.
+  <p class="small muted">
+    Updates arrive on their own — the Desktop launcher pulls the latest version
+    every time you start it.
   </p>
 
   <footer>
-    Source: <a href="https://github.com/Jonah-Keller/lecture-notes-viewer">github.com/Jonah-Keller/lecture-notes-viewer</a>
-    · Lecture material is shared with classmates only, not redistributed.
+    Source and issues:
+    <a href="https://github.com/Jonah-Keller/lecture-notes-viewer">github.com/Jonah-Keller/lecture-notes-viewer</a>
   </footer>
 
 </div>
@@ -174,18 +301,17 @@
 (function () {
   const P = window.PACKS || {};
   const ready = (u) => u && !u.startsWith("PASTE_");
-  const btn = (u, t) => `<a class="btn" href="${u}" style="font-size:15px;padding:12px 22px;">${t}</a>`;
-
-  const links = document.getElementById("pack-links");
-  const parts = [];
-  if (ready(P.sampler)) parts.push(btn(P.sampler, "Sample lectures · 39 MB"));
-  if (ready(P.full)) parts.push(btn(P.full, "Full library · 709 MB"));
-  links.innerHTML = parts.length
-    ? parts.join(" &nbsp; ")
-    : "<em>Use the download links you were sent.</em>";
-
-  const cta = document.getElementById("sampler-cta");
-  if (ready(P.sampler)) cta.innerHTML = btn(P.sampler, "Download the sample lectures · 39 MB");
+  const el = document.getElementById("pack-buttons");
+  const out = [];
+  if (ready(P.sampler)) {
+    out.push(`<a class="btn" href="${P.sampler}">Seven sample lectures · 39 MB</a>`);
+  }
+  if (ready(P.full)) {
+    out.push(`<a class="btn btn-quiet" href="${P.full}">The full library · 676 MB</a>`);
+  }
+  el.innerHTML = out.length
+    ? out.join("")
+    : `<em class="muted">Download links are in the message you were sent.</em>`;
 })();
 </script>
 </body>
