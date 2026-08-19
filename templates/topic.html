@@ -8,6 +8,8 @@
         <div class="brand">
             <span class="brand-mark">PSOM</span>
             <span class="brand-title">Lecture notes</span>
+            <a href="{{ url_for('setup.setup_view') }}" class="btn btn-ghost btn-sm"
+               style="margin-left:auto;" title="API key, model, library pack">Setup</a>
         </div>
 
         {% if current_slug %}
@@ -18,7 +20,8 @@
             </summary>
             {% if not api_key_set %}
             <div class="banner banner-warn" style="margin: 12px 0 0;">
-                Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to enable generation.
+                No API key yet — <a href="{{ url_for('setup.setup_view') }}">open Setup</a>
+                to paste one and enable generation.
             </div>
             {% endif %}
             <form id="upload-form"

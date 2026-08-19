@@ -32,6 +32,7 @@ from generator import (
     start_generation,
 )
 from pdf_export import render_url_to_pdf
+from setup_flow import api_key_set as _setup_api_key_set, setup_bp
 
 # Load .env before anything reads os.environ.
 load_dotenv()
@@ -126,7 +127,11 @@ class CalloutExtension(Extension):
 
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB upload cap
+# Generous because a shared library pack (all courses, every slide image)
+# runs to a couple of GB. Localhost only, so the cap is about catching a
+# mistake, not about defending a port.
+app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024  # 4 GB upload cap
+app.register_blueprint(setup_bp)
 
 
 def build_library(current_slug: Optional[str] = None) -> list[dict]:
@@ -286,6 +291,9 @@ def _first_h1(toc_tokens):
 @app.route("/")
 def index():
     topics = list_topics()
+    if not topics and not _api_key_set():
+        # Nothing to read and no way to generate: send them to Setup.
+        return redirect(url_for("setup.setup_view"))
     if not topics:
         return render_template(
             "topic.html",
@@ -342,7 +350,7 @@ def topic_image(topic_slug, filename):
 
 
 def _api_key_set() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return _setup_api_key_set()
 
 
 # Per-course lock prevents two simultaneous uploads from claiming the same
@@ -399,7 +407,7 @@ def upload(course_slug):
     if not course_dir.is_dir():
         abort(404, f"Unknown course: {course_slug}")
     if not _api_key_set():
-        return jsonify({"error": "ANTHROPIC_API_KEY not set. Copy .env.example to .env."}), 400
+        return jsonify({"error": "No API key yet — open Setup to paste one."}), 400
 
     pdf = request.files.get("slides")
     transcript = request.files.get("transcript")
@@ -765,7 +773,7 @@ def master_rebuild(course_slug):
 # ---------- Per-course prompt tuner ----------
 
 
-PROMPT_TUNER_MODEL = os.environ.get("LECNOTES_TUNER_MODEL", "claude-sonnet-4-6")
+PROMPT_TUNER_MODEL = os.environ.get("LECNOTES_TUNER_MODEL", "claude-sonnet-5")
 
 
 def _course_addendum_path(course_slug: str) -> Path:
@@ -802,7 +810,7 @@ def prompt_tuner_chat(course_slug):
     if not (CONTENT_DIR / course_slug).is_dir():
         abort(404)
     if not _api_key_set():
-        return jsonify({"error": "ANTHROPIC_API_KEY not set."}), 400
+        return jsonify({"error": "No API key yet — open Setup to paste one."}), 400
     data = request.get_json(silent=True) or {}
     history = data.get("history") or []
     if not isinstance(history, list) or not history:

@@ -64,20 +64,13 @@ if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
-# If the API key is still the placeholder, prompt interactively.
+# No key yet? Say so, but don't block on a Terminal prompt — the app opens on
+# its Setup page, where the key gets pasted into a normal form.
 if grep -qE '^ANTHROPIC_API_KEY=(sk-ant-\.\.\.|)$' .env 2>/dev/null; then
     echo
-    echo "No Anthropic API key set yet."
-    echo "Get one at: https://console.anthropic.com/settings/keys"
+    echo "No Anthropic API key set yet — the app will open on its Setup page."
+    echo "Get a key at: https://console.anthropic.com/settings/keys"
     echo
-    printf "Paste your ANTHROPIC_API_KEY (starts with sk-ant-): "
-    read -r USER_KEY
-    if [ -z "$USER_KEY" ]; then
-        echo "No key entered. Edit .env manually and re-run."
-        exit 1
-    fi
-    /usr/bin/sed -i '' "s|^ANTHROPIC_API_KEY=.*$|ANTHROPIC_API_KEY=${USER_KEY}|" .env
-    echo "Key saved to .env"
 fi
 
 # --- Launch -------------------------------------------------------------------

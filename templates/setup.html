@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Setup — Lecture Notes{% endblock %}
+
+{% block body %}
+<div class="container">
+    <main class="main" style="max-width:760px;margin:0 auto;padding:40px 24px 80px;">
+
+        <div class="brand" style="margin-bottom:28px;">
+            <span class="brand-mark">PSOM</span>
+            <span class="brand-title">Lecture notes — setup</span>
+        </div>
+
+        {% if error %}
+        <div class="banner banner-warn" style="margin-bottom:20px;">{{ error }}</div>
+        {% elif request.args.get('saved') %}
+        <div class="banner banner-info" style="margin-bottom:20px;">Saved.</div>
+        {% endif %}
+
+        <!-- ── 1. API key ─────────────────────────────────────────────── -->
+        <section class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+                <span class="card-title">1 · Your Anthropic API key</span>
+                {% if api_key_set %}<span class="field-pill">set</span>{% endif %}
+            </div>
+            <p class="card-sub" style="margin-top:8px;">
+                Notes are generated with your own key, billed to your own account —
+                nothing runs through anyone else's. Create one at
+                <a href="https://console.anthropic.com/settings/keys" target="_blank"
+                   rel="noopener">console.anthropic.com/settings/keys</a>,
+                add a few dollars of credit, and paste it below.
+            </p>
+
+            <form method="post" action="{{ url_for('setup.setup_save') }}"
+                  style="display:flex;flex-direction:column;gap:16px;margin-top:16px;">
+
+                <label class="field">
+                    <span class="field-label">API key</span>
+                    <input class="input" type="password" name="api_key" autocomplete="off"
+                           placeholder="{{ masked_key or 'sk-ant-...' }}">
+                    <span class="field-hint">
+                        {% if api_key_set %}
+                            Currently {{ masked_key }}. Leave blank to keep it.
+                        {% else %}
+                            Stored in a <code>.env</code> file on this Mac only. Never uploaded.
+                        {% endif %}
+                    </span>
+                </label>
+
+                <!-- ── 2. Model ───────────────────────────────────────── -->
+                <div class="field">
+                    <span class="field-label">2 · Model</span>
+                    <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">
+                        {% for mid, label, blurb in models %}
+                        <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;
+                                      padding:10px 12px;border:1px solid var(--zinc-700, #3f3f46);
+                                      border-radius:8px;">
+                            <input type="radio" name="model" value="{{ mid }}"
+                                   style="margin-top:3px;"
+                                   {% if mid == current_model %}checked{% endif %}>
+                            <span>
+                                <strong style="display:block;">{{ label }}</strong>
+                                <span class="field-hint">{{ blurb }}</span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <span class="field-hint" style="margin-top:8px;display:block;">
+                        Cost is per lecture, for a ~40-slide deck plus its transcript.
+                        You can change this any time and regenerate a single lecture.
+                    </span>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg">Save</button>
+            </form>
+        </section>
+
+        <!-- ── 3. Library pack ────────────────────────────────────────── -->
+        <section class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+                <span class="card-title">3 · Load the shared lectures</span>
+                {% if courses %}<span class="field-pill">{{ courses|length }} loaded</span>{% endif %}
+            </div>
+            <p class="card-sub" style="margin-top:8px;">
+                The library pack is a <code>.zip</code> of finished courses — notes and
+                every slide image. Download it, then load it here. This is a one-time
+                copy onto your own machine; nothing is re-generated and no API credit
+                is spent.
+            </p>
+
+            {% if courses %}
+            <p class="field-hint" style="margin-top:10px;">
+                Already loaded: {{ courses|join(', ') }}
+            </p>
+            {% endif %}
+
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;">
+                {% if detected_pack %}
+                <div class="banner banner-info">
+                    Found <strong>{{ detected_pack_name }}</strong> ({{ detected_pack_size }}).
+                </div>
+                <button type="button" class="btn btn-primary" id="import-detected"
+                        data-path="{{ detected_pack }}">
+                    Load {{ detected_pack_name }}
+                </button>
+                {% endif %}
+
+                <label class="field">
+                    <span class="field-label">
+                        {% if detected_pack %}Or pick a different zip{% else %}Choose the zip{% endif %}
+                    </span>
+                    <input class="input" type="file" id="pack-file" accept=".zip">
+                    <span class="field-hint">
+                        A large pack takes a minute or two to copy. Leave the tab open.
+                    </span>
+                </label>
+
+                <label style="display:flex;gap:8px;align-items:center;">
+                    <input type="checkbox" id="pack-overwrite">
+                    <span class="field-hint">Replace courses I already have</span>
+                </label>
+
+                <div id="pack-status" class="field-hint"></div>
+            </div>
+        </section>
+
+        <div style="display:flex;gap:12px;">
+            <a class="btn btn-primary btn-lg" href="{{ url_for('index') }}">Open the notes →</a>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+  const status = document.getElementById('pack-status');
+  const fileInput = document.getElementById('pack-file');
+  const overwrite = document.getElementById('pack-overwrite');
+  const detected = document.getElementById('import-detected');
+
+  function say(msg, bad) {
+    status.textContent = msg;
+    status.style.color = bad ? 'var(--red-400, #f87171)' : '';
+  }
+
+  function send(body, disableEl) {
+    say('Loading… this can take a minute or two for a big pack.');
+    if (disableEl) disableEl.disabled = true;
+    fetch('{{ url_for("setup.setup_library") }}', { method: 'POST', body: body })
+      .then(r => r.json().then(j => ({ ok: r.ok, j: j })))
+      .then(({ ok, j }) => {
+        if (!ok) { say(j.error || 'Import failed.', true); return; }
+        const parts = [];
+        if (j.imported.length) parts.push('Loaded: ' + j.imported.join(', ') + '.');
+        if (j.skipped.length) {
+          parts.push('Skipped (already present): ' + j.skipped.join(', ') +
+                     ' — tick "Replace courses I already have" to overwrite.');
+        }
+        say(parts.join(' ') || 'Nothing to load.');
+        if (j.imported.length) setTimeout(() => location.reload(), 1200);
+      })
+      .catch(e => say('Import failed: ' + e, true))
+      .finally(() => { if (disableEl) disableEl.disabled = false; });
+  }
+
+  if (detected) {
+    detected.addEventListener('click', () => {
+      const fd = new FormData();
+      fd.append('path', detected.dataset.path);
+      if (overwrite.checked) fd.append('overwrite', '1');
+      send(fd, detected);
+    });
+  }
+
+  fileInput.addEventListener('change', () => {
+    if (!fileInput.files.length) return;
+    const fd = new FormData();
+    fd.append('pack', fileInput.files[0]);
+    if (overwrite.checked) fd.append('overwrite', '1');
+    send(fd, null);
+  });
+})();
+</script>
+{% endblock %}

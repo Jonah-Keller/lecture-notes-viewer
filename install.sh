@@ -8,8 +8,9 @@
 #   1. Installs Xcode Command Line Tools if missing (gives you git + python3).
 #   2. Clones the repo to ~/lecture-notes-viewer (or updates it if already there).
 #   3. Creates a "Launch Lecture Notes" shortcut on your Desktop.
-#   4. Hands off to start.sh, which sets up Python deps, Chromium, prompts for
-#      your Anthropic API key, and launches the app in your browser.
+#   4. Hands off to start.sh, which sets up Python deps and Chromium, then
+#      launches the app in your browser on its Setup page — where you paste
+#      your API key and load the shared library pack.
 #
 # Re-running this script is safe — it updates and relaunches.
 
@@ -74,7 +75,8 @@ echo "  (Double-click it any time to start the app.)"
 echo
 
 # --- Step 4: First-run setup + launch -----------------------------------------
-echo "→ Running first-time setup. You'll be asked for your Anthropic API key."
+echo "→ Running first-time setup (Python deps + Chromium, ~2 minutes)."
+echo "  When the browser opens, you'll paste your Anthropic API key there."
 echo "  Get one (free to create) at: https://console.anthropic.com/settings/keys"
 echo
 exec "$INSTALL_DIR/start.sh"

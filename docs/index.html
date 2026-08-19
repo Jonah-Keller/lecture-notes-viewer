@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture Notes Viewer</title>
+<style>
+  :root {
+    --bg: #fafaf9; --fg: #1c1917; --muted: #57534e; --line: #e7e5e4;
+    --card: #ffffff; --accent: #7c3aed; --accent-fg: #ffffff; --code: #f5f5f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0a09; --fg: #fafaf9; --muted: #a8a29e; --line: #292524;
+      --card: #1c1917; --accent: #a78bfa; --accent-fg: #1c1917; --code: #292524;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 64px 24px 96px; }
+  .mark {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent);
+    border-radius: 4px; padding: 3px 8px; margin-bottom: 20px;
+  }
+  h1 { font-size: 36px; line-height: 1.15; margin: 0 0 14px; letter-spacing: -.02em; }
+  .lede { font-size: 18px; color: var(--muted); margin: 0 0 36px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em;
+       color: var(--muted); margin: 48px 0 14px; font-weight: 700; }
+  a { color: var(--accent); }
+  .btn {
+    display: inline-block; background: var(--accent); color: var(--accent-fg);
+    font-size: 17px; font-weight: 650; text-decoration: none;
+    padding: 15px 28px; border-radius: 10px;
+  }
+  .btn:hover { opacity: .9; }
+  .btn-sub { display: block; margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 22px; margin: 16px 0;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  code, pre {
+    background: var(--code); border-radius: 6px;
+    font: 13.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  code { padding: 2px 6px; }
+  pre { padding: 14px 16px; overflow-x: auto; border: 1px solid var(--line); }
+  pre code { background: none; padding: 0; }
+  ol { padding-left: 22px; }
+  ol li { margin-bottom: 10px; }
+  .warn {
+    border-left: 3px solid var(--accent); background: var(--card);
+    padding: 14px 18px; margin: 20px 0; font-size: 15px;
+  }
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line);
+           color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="mark">PSOM</span>
+  <h1>Lecture Notes Viewer</h1>
+  <p class="lede">
+    Slides plus a transcript in, a properly written set of lecture notes out —
+    figures embedded, cross-referenced against everything covered earlier in the
+    course. Runs on your own Mac, on your own API key.
+  </p>
+
+  <a class="btn" href="Install%20Lecture%20Notes.command" download>Download the installer</a>
+  <span class="btn-sub">macOS · one file · takes about three minutes end to end</span>
+
+  <div class="warn">
+    <strong>First double-click will be blocked.</strong> macOS refuses to run any
+    downloaded script the first time. <strong>Right-click</strong> (or Control-click)
+    the downloaded file → <strong>Open</strong> → <strong>Open</strong>. Once only.
+    <br><br>
+    Rather skip that? Paste this into Terminal instead — same installer, no warning:
+    <pre><code>curl -fsSL https://raw.githubusercontent.com/Jonah-Keller/lecture-notes-viewer/main/install.sh | bash</code></pre>
+  </div>
+
+  <h2>What happens after you run it</h2>
+  <ol>
+    <li>It installs Apple's command line tools if you don't already have them (a system popup — click Install).</li>
+    <li>It downloads the app and puts <strong>Launch Lecture Notes</strong> on your Desktop.</li>
+    <li>Your browser opens on the Setup page.</li>
+    <li>Paste an Anthropic API key, pick a model, load the shared lecture pack. Done.</li>
+  </ol>
+  <p>Every time after that, you just double-click the Desktop launcher.</p>
+
+  <h2>The two things Setup asks for</h2>
+
+  <div class="card">
+    <h3>An Anthropic API key</h3>
+    <p>
+      Create one at <a href="https://console.anthropic.com/settings/keys" target="_blank"
+      rel="noopener">console.anthropic.com/settings/keys</a> and put a few dollars of
+      credit on it. Generation is billed to your account, not anyone else's, and the
+      key is written to a file on your Mac — it never leaves it. The default model is
+      Sonnet, at roughly $0.25–0.60 per lecture; Haiku is a few cents if you want it
+      cheaper, Opus is there for a lecture that's mostly diagrams.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>The library pack</h3>
+    <p>
+      A single <code>.zip</code> holding the courses that are already written up —
+      the notes and every slide image. Download it from the link you were sent,
+      then load it on the Setup screen. That's a straight copy onto your machine:
+      nothing regenerates, no API credit is spent, and you can read all of it
+      without a key at all.
+    </p>
+  </div>
+
+  <h2>Then what</h2>
+  <p>
+    Read and search everything in the pack. To add a lecture of your own, hit
+    <strong>New lecture</strong>, drop in the slide PDF and the transcript, and
+    the notes are drafted in the background while you do something else. Review
+    the draft, publish it, export a PDF.
+  </p>
+
+  <h2>If something goes wrong</h2>
+  <p>
+    Almost everything is one of three things: the Gatekeeper warning above,
+    a missing Xcode command line tools install (<code>xcode-select --install</code>),
+    or something else already sitting on port 8080. The
+    <a href="https://github.com/Jonah-Keller/lecture-notes-viewer#troubleshooting">README</a>
+    has the rest.
+  </p>
+
+  <footer>
+    Source: <a href="https://github.com/Jonah-Keller/lecture-notes-viewer">github.com/Jonah-Keller/lecture-notes-viewer</a>
+    · Lecture material is shared with classmates only, not redistributed.
+  </footer>
+
+</div>
+</body>
+</html>

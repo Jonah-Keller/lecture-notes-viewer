@@ -14,7 +14,7 @@
                 Course: <strong style="color:var(--zinc-100)">{{ current_name }}</strong>
             </div>
             {% if not api_key_set %}
-            <div class="banner banner-warn">Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to chat with Claude.</div>
+            <div class="banner banner-warn">No API key yet — <a href="{{ url_for('setup.setup_view') }}">open Setup</a> to paste one.</div>
             {% endif %}
             <p class="field-hint">
                 The base prompt at <code>prompt.txt</code> runs for every lecture in every course.

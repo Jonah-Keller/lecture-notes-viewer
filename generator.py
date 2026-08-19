@@ -3,7 +3,7 @@
 Pipeline:
   1. Render uploaded PDF to images/<slug>/slide-NN.png (zero-padded, 1-indexed).
   2. Clean transcript (plain .txt, or .vtt/.srt with timestamp stripping).
-  3. Call Claude Opus 4.7 with the prompt.txt as a cached system message plus
+  3. Call Claude with the prompt.txt as a cached system message plus
      all slide images and the transcript text in a single user message.
   4. Substitute the {LECTURE_SLUG} placeholder in the returned markdown so image
      paths resolve under the course's images directory.
@@ -40,7 +40,9 @@ BASE_DIR = Path(__file__).parent.resolve()
 CONTENT_DIR = BASE_DIR / "content"
 PROMPT_PATH = BASE_DIR / "prompt.txt"
 
-DEFAULT_MODEL = os.environ.get("LECNOTES_MODEL", "claude-opus-4-7")
+# Sonnet is the default: roughly a fifth of Opus's price and still reads dense
+# slides well.
+FALLBACK_MODEL = "claude-sonnet-5"
 DEFAULT_MAX_EDGE = int(os.environ.get("LECNOTES_MAX_IMAGE_EDGE", "1568"))
 DEFAULT_DPI = int(os.environ.get("LECNOTES_PDF_DPI", "150"))
 MAX_OUTPUT_TOKENS = int(os.environ.get("LECNOTES_MAX_OUTPUT_TOKENS", "16000"))
@@ -48,6 +50,13 @@ DEFAULT_JPEG_QUALITY = int(os.environ.get("LECNOTES_JPEG_QUALITY", "85"))
 # Soft cap on prior-lecture context size, in characters. Roughly 4 chars/token,
 # so 400_000 ≈ 100K tokens. When exceeded, oldest chapters are dropped first.
 PRIOR_CONTEXT_CHAR_CAP = int(os.environ.get("LECNOTES_PRIOR_CONTEXT_CAP", "400000"))
+
+
+def current_model() -> str:
+    """Resolved at call time, not import time, so the in-app setup screen can
+    change the model without a server restart."""
+    return os.environ.get("LECNOTES_MODEL") or FALLBACK_MODEL
+
 
 
 # ---------- Job state ----------
@@ -306,13 +315,14 @@ def call_claude(
     course_name: str,
     course_slug: Optional[str] = None,
     lecture_slug: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
+    model: Optional[str] = None,
     on_text: Optional[Callable[[str], None]] = None,
 ) -> str:
     """Stream a generation and return the full markdown string."""
     if Anthropic is None:
         raise RuntimeError("anthropic package not installed")
 
+    model = model or current_model()
     client = Anthropic()
     system_prompt = _load_prompt(course_slug)
     prior_context = _load_prior_chapters(course_slug) if course_slug else ""
